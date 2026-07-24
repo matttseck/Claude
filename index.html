@@ -356,6 +356,47 @@ body {
   white-space: nowrap;
 }
 
+/* ─── INLINE EXPENSE FORM ─── */
+.inline-expense-form {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+}
+.ief-row {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
+}
+.ief-field { display: flex; flex-direction: column; gap: 3px; }
+.ief-field label {
+  font-size: .66rem; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.ief-field input, .ief-field select {
+  padding: 7px 8px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface-raised);
+  color: var(--text); font-size: .82rem; font-family: var(--font-body);
+  transition: var(--transition);
+}
+.ief-field input:focus, .ief-field select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+.ief-desc { flex: 2; min-width: 120px; }
+.ief-amount { flex: 0 0 85px; }
+.ief-amount input { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.ief-currency select { width: 72px; }
+.ief-category select { width: 110px; }
+.ief-date { flex: 0 0 auto; }
+.ief-paidby select, .ief-for select { width: 78px; }
+.ief-split { flex: 0 0 52px; }
+.ief-split input { text-align: center; font-variant-numeric: tabular-nums; }
+.ief-add { flex: 0 0 auto; }
+.ief-add button {
+  padding: 7px 14px; border: none; border-radius: var(--radius-sm);
+  background: var(--accent); color: #fff; font-size: .82rem;
+  font-weight: 600; cursor: pointer; transition: var(--transition);
+  font-family: var(--font-body); white-space: nowrap;
+}
+.ief-add button:hover { background: var(--accent-hover); }
+
 .empty-state {
   text-align: center; padding: 60px 20px;
   color: var(--text-secondary);
@@ -551,7 +592,7 @@ body {
   z-index: 40; transition: var(--transition);
 }
 .fab:hover { background: var(--accent-hover); box-shadow: var(--shadow-lg); }
-.fab.visible { display: flex; }
+.fab.visible { display: none; }
 
 input[type="file"] { display: none; }
 
@@ -743,6 +784,7 @@ let state = { sessions: [], expenses: [], activeView: 'overview' };
 let editingExpenseId = null;
 let editingSessionId = null;
 let activeFilters = { paidBy: null, category: null };
+let iefDefaults = { currency: null, category: 'other', date: null, paidBy: 'matt', forWhom: 'both', split: 50 };
 
 function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
 
@@ -880,10 +922,9 @@ function render() {
   renderSessionBar();
   if (state.activeView === 'overview') {
     renderOverview();
-    document.getElementById('fab').classList.remove('visible');
   } else {
     renderSessionDetail(state.activeView);
-    document.getElementById('fab').classList.add('visible');
+    setupInlineForm();
   }
 }
 
@@ -1041,6 +1082,65 @@ function renderSessionDetail(sessionId) {
   }
   html += '</div>';
 
+  // Inline expense form
+  const iefCur = iefDefaults.currency || session.defaultCurrency;
+  const curOpts = CURRENCIES.map(c =>
+    `<option value="${c.code}" ${c.code === iefCur ? 'selected' : ''}>${c.code}</option>`
+  ).join('');
+  const catOpts = Object.entries(CATEGORIES).map(([key, cat]) =>
+    `<option value="${key}" ${key === iefDefaults.category ? 'selected' : ''}>${escapeHtml(cat.name)}</option>`
+  ).join('');
+  const iefDate = iefDefaults.date || todayStr();
+  const splitVis = iefDefaults.forWhom === 'both' ? '' : 'style="display:none"';
+
+  html += `<div class="inline-expense-form">
+    <div class="ief-row">
+      <div class="ief-field ief-desc">
+        <label>Description</label>
+        <input type="text" id="ief-desc" placeholder="What was it for?">
+      </div>
+      <div class="ief-field ief-amount">
+        <label>Amount</label>
+        <input type="number" id="ief-amount" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
+      </div>
+      <div class="ief-field ief-currency">
+        <label>Currency</label>
+        <select id="ief-currency">${curOpts}</select>
+      </div>
+      <div class="ief-field ief-category">
+        <label>Category</label>
+        <select id="ief-category">${catOpts}</select>
+      </div>
+      <div class="ief-field ief-date">
+        <label>Date</label>
+        <input type="date" id="ief-date" value="${iefDate}">
+      </div>
+      <div class="ief-field ief-paidby">
+        <label>Paid by</label>
+        <select id="ief-paidby">
+          <option value="matt" ${iefDefaults.paidBy==='matt'?'selected':''}>Matt</option>
+          <option value="vienna" ${iefDefaults.paidBy==='vienna'?'selected':''}>Vienna</option>
+        </select>
+      </div>
+      <div class="ief-field ief-for">
+        <label>For</label>
+        <select id="ief-for" onchange="updateIefSplit()">
+          <option value="both" ${iefDefaults.forWhom==='both'?'selected':''}>Both</option>
+          <option value="matt" ${iefDefaults.forWhom==='matt'?'selected':''}>Matt</option>
+          <option value="vienna" ${iefDefaults.forWhom==='vienna'?'selected':''}>Vienna</option>
+        </select>
+      </div>
+      <div class="ief-field ief-split" id="ief-split-field" ${splitVis}>
+        <label>Matt %</label>
+        <input type="number" id="ief-split" value="${iefDefaults.split}" min="0" max="100" step="5">
+      </div>
+      <div class="ief-field ief-add">
+        <label>&nbsp;</label>
+        <button onclick="addFromInlineForm()">Add</button>
+      </div>
+    </div>
+  </div>`;
+
   const allExpenses = state.expenses.filter(e => e.sessionId === sessionId);
   if (allExpenses.length > 0) {
     const usedCategories = [...new Set(allExpenses.map(e => e.category))];
@@ -1055,20 +1155,11 @@ function renderSessionDetail(sessionId) {
             ${usedCategories.map(c => `<option value="${c}" ${activeFilters.category===c?'selected':''}>${escapeHtml(CATEGORIES[c]?.name || c)}</option>`).join('')}
           </select>` : ''}
       </div>
-      <button class="btn-primary" onclick="openExpenseModal()">+ Add</button>
     </div>`;
   }
 
   if (expenses.length === 0 && allExpenses.length === 0) {
-    html += `<div class="empty-state">
-      <div class="empty-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
-        </svg>
-      </div>
-      <p>No expenses in this session yet.</p>
-      <button class="btn-primary" onclick="openExpenseModal()">Add first expense</button>
-    </div>`;
+    html += '<div class="empty-state"><p style="margin:0">Add your first expense above.</p></div>';
   } else if (expenses.length === 0) {
     html += '<div class="empty-state"><p>No expenses match the current filter.</p></div>';
   } else {
@@ -1102,6 +1193,55 @@ function renderSessionDetail(sessionId) {
   }
 
   main.innerHTML = html;
+}
+
+function addFromInlineForm() {
+  const amount = parseFloat(document.getElementById('ief-amount').value);
+  if (isNaN(amount) || amount <= 0) {
+    document.getElementById('ief-amount').focus();
+    return;
+  }
+
+  const desc = document.getElementById('ief-desc').value.trim();
+  const currency = document.getElementById('ief-currency').value;
+  const category = document.getElementById('ief-category').value;
+  const date = document.getElementById('ief-date').value || todayStr();
+  const paidBy = document.getElementById('ief-paidby').value;
+  const forWhom = document.getElementById('ief-for').value;
+  const splitRatio = forWhom === 'both' ? (parseInt(document.getElementById('ief-split').value) || 50) : 50;
+
+  iefDefaults = { currency, category, date, paidBy, forWhom, split: splitRatio };
+
+  state.expenses.push({
+    id: uid(), sessionId: state.activeView,
+    amount, currency, description: desc, date, paidBy, forWhom, splitRatio, category,
+    createdAt: Date.now()
+  });
+
+  saveState();
+  render();
+
+  const descField = document.getElementById('ief-desc');
+  if (descField) descField.focus();
+}
+
+function setupInlineForm() {
+  const form = document.querySelector('.inline-expense-form');
+  if (!form) return;
+  form.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addFromInlineForm();
+    }
+  });
+}
+
+function updateIefSplit() {
+  const forEl = document.getElementById('ief-for');
+  const splitField = document.getElementById('ief-split-field');
+  if (forEl && splitField) {
+    splitField.style.display = forEl.value === 'both' ? '' : 'none';
+  }
 }
 
 function switchView(view) {
