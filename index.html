@@ -1,0 +1,1561 @@
+<title>Matt & Vienna — Expenses</title>
+<style>
+:root {
+  --accent: #2A9D8F;
+  --accent-hover: #238578;
+  --accent-light: #2a9d8f18;
+  --matt: #5B8DB8;
+  --matt-light: #5b8db822;
+  --vienna: #C9685A;
+  --vienna-light: #c9685a22;
+  --success: #3A9E6E;
+  --warning: #D4A03C;
+  --danger: #C94747;
+  --danger-light: #c9474712;
+  --bg: #F3F3F0;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --text: #2A2D33;
+  --text-secondary: #6B6E76;
+  --text-tertiary: #999BA2;
+  --border: #DDDEE1;
+  --border-light: #EDEDEF;
+  --shadow: 0 1px 3px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,.12);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+  --font-display: Georgia, 'Hoefler Text', 'Palatino Linotype', serif;
+  --font-body: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'Cascadia Code', Consolas, 'Liberation Mono', monospace;
+  --transition: 180ms ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent-light: #2a9d8f22;
+    --matt-light: #5b8db830;
+    --vienna-light: #c9685a30;
+    --danger-light: #c9474720;
+    --bg: #111318;
+    --surface: #1A1D24;
+    --surface-raised: #22262E;
+    --text: #E2E3E7;
+    --text-secondary: #8C8F97;
+    --text-tertiary: #5E6068;
+    --border: #2C303A;
+    --border-light: #24272F;
+    --shadow: 0 1px 3px rgba(0,0,0,.2);
+    --shadow-md: 0 4px 12px rgba(0,0,0,.3);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,.4);
+  }
+}
+:root[data-theme="dark"] {
+  --accent-light: #2a9d8f22;
+  --matt-light: #5b8db830;
+  --vienna-light: #c9685a30;
+  --danger-light: #c9474720;
+  --bg: #111318;
+  --surface: #1A1D24;
+  --surface-raised: #22262E;
+  --text: #E2E3E7;
+  --text-secondary: #8C8F97;
+  --text-tertiary: #5E6068;
+  --border: #2C303A;
+  --border-light: #24272F;
+  --shadow: 0 1px 3px rgba(0,0,0,.2);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.3);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,.4);
+}
+:root[data-theme="light"] {
+  --accent-light: #2a9d8f18;
+  --matt-light: #5b8db822;
+  --vienna-light: #c9685a22;
+  --danger-light: #c9474712;
+  --bg: #F3F3F0;
+  --surface: #FFFFFF;
+  --surface-raised: #FFFFFF;
+  --text: #2A2D33;
+  --text-secondary: #6B6E76;
+  --text-tertiary: #999BA2;
+  --border: #DDDEE1;
+  --border-light: #EDEDEF;
+  --shadow: 0 1px 3px rgba(0,0,0,.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+  --shadow-lg: 0 8px 30px rgba(0,0,0,.12);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* ─── LAYOUT ─── */
+.app { max-width: 820px; margin: 0 auto; padding: 0 16px 100px; }
+
+.app-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 0 12px; gap: 12px;
+}
+.app-header h1 {
+  font-family: var(--font-display);
+  font-size: 1.35rem; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--text);
+}
+.app-header h1 span { color: var(--accent); }
+
+.header-actions { display: flex; gap: 6px; align-items: center; }
+
+.icon-btn {
+  width: 36px; height: 36px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--text-secondary); cursor: pointer; display: flex;
+  align-items: center; justify-content: center; transition: var(--transition);
+  position: relative;
+}
+.icon-btn:hover { background: var(--surface-raised); color: var(--text); border-color: var(--text-tertiary); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* ─── SESSION BAR ─── */
+.session-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 0 16px; overflow-x: auto;
+  scrollbar-width: none;
+}
+.session-bar::-webkit-scrollbar { display: none; }
+
+.session-tab {
+  flex-shrink: 0; padding: 7px 16px; border-radius: 20px;
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: .8rem; font-weight: 500; color: var(--text-secondary);
+  cursor: pointer; transition: var(--transition); white-space: nowrap;
+  position: relative;
+}
+.session-tab:hover { border-color: var(--text-tertiary); color: var(--text); }
+.session-tab.active {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff; font-weight: 600;
+}
+.session-tab .settled-dot {
+  display: inline-block; width: 6px; height: 6px;
+  background: var(--success); border-radius: 50%; margin-left: 6px;
+  vertical-align: middle;
+}
+.session-tab.active .settled-dot { background: #fff; }
+
+.add-session-tab {
+  flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%;
+  border: 1px dashed var(--border); background: transparent;
+  color: var(--text-tertiary); cursor: pointer; font-size: 1.1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: var(--transition);
+}
+.add-session-tab:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ─── OVERVIEW ─── */
+.overview-grid {
+  display: grid; grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 540px) {
+  .overview-grid { grid-template-columns: 1fr 1fr; }
+}
+
+.session-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  cursor: pointer; transition: var(--transition);
+  position: relative; overflow: hidden;
+}
+.session-card:hover { box-shadow: var(--shadow-md); border-color: var(--text-tertiary); }
+.session-card.settled { border-left: 3px solid var(--success); }
+
+.session-card-name {
+  font-family: var(--font-display); font-size: 1.05rem;
+  font-weight: 700; margin-bottom: 4px;
+}
+.session-card-note {
+  font-size: .8rem; color: var(--text-secondary); margin-bottom: 12px;
+  line-height: 1.4;
+}
+.session-card-stats {
+  display: flex; gap: 16px; font-size: .78rem;
+  color: var(--text-tertiary);
+}
+.session-card-stats strong { color: var(--text); font-weight: 600; }
+.session-card-settlement {
+  margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-light);
+  font-size: .82rem;
+}
+.settlement-line { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.settlement-line .arrow { color: var(--text-tertiary); font-size: .7rem; }
+.settlement-line .amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+.settled-badge {
+  display: inline-block; font-size: .7rem; font-weight: 600;
+  color: var(--success); background: #3a9e6e15;
+  padding: 2px 8px; border-radius: 10px; letter-spacing: .03em;
+  text-transform: uppercase;
+}
+
+.new-session-card {
+  background: transparent; border: 2px dashed var(--border);
+  border-radius: var(--radius-lg); padding: 40px 20px;
+  cursor: pointer; transition: var(--transition);
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 8px; min-height: 160px;
+}
+.new-session-card:hover { border-color: var(--accent); }
+.new-session-card .plus {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--accent-light); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+}
+.new-session-card span { font-size: .85rem; color: var(--text-secondary); }
+
+/* ─── SESSION DETAIL ─── */
+.session-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  margin-bottom: 16px; gap: 12px;
+}
+.session-header-left h2 {
+  font-family: var(--font-display); font-size: 1.25rem;
+  font-weight: 700; margin-bottom: 2px;
+}
+.session-header-left .note {
+  font-size: .82rem; color: var(--text-secondary);
+}
+.session-header-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ─── SETTLEMENT BANNER ─── */
+.settlement-banner {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+  margin-bottom: 16px;
+}
+.settlement-banner.all-settled {
+  border-color: var(--success);
+  background: #3a9e6e08;
+}
+.settlement-title {
+  font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-tertiary); margin-bottom: 12px;
+}
+.settlement-items { display: flex; flex-direction: column; gap: 8px; }
+.settlement-item {
+  display: flex; align-items: center; gap: 10px;
+  font-size: .92rem;
+}
+.settlement-item .person-badge {
+  font-size: .75rem; font-weight: 600; padding: 2px 10px;
+  border-radius: 12px; letter-spacing: .02em;
+}
+.settlement-item .person-badge.matt { background: var(--matt-light); color: var(--matt); }
+.settlement-item .person-badge.vienna { background: var(--vienna-light); color: var(--vienna); }
+.settlement-item .arrow-icon { color: var(--text-tertiary); font-size: .8rem; }
+.settlement-item .settlement-amount {
+  font-weight: 700; font-variant-numeric: tabular-nums;
+  font-family: var(--font-body);
+}
+.settlement-all-clear {
+  font-size: .95rem; color: var(--success); font-weight: 600;
+}
+.settlement-summary {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 12px; margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+.summary-block { font-size: .78rem; }
+.summary-block .label { color: var(--text-tertiary); margin-bottom: 2px; }
+.summary-block .value {
+  font-weight: 700; font-size: 1.05rem;
+  font-variant-numeric: tabular-nums;
+}
+.summary-block .value.matt { color: var(--matt); }
+.summary-block .value.vienna { color: var(--vienna); }
+
+/* ─── EXPENSE LIST ─── */
+.expense-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; gap: 8px; flex-wrap: wrap;
+}
+.expense-toolbar-left { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.filter-chip {
+  padding: 5px 12px; border-radius: 16px; font-size: .76rem;
+  font-weight: 500; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-secondary);
+  cursor: pointer; transition: var(--transition); white-space: nowrap;
+}
+.filter-chip:hover { border-color: var(--text-tertiary); }
+.filter-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.filter-chip.matt.active { background: var(--matt); border-color: var(--matt); }
+.filter-chip.vienna.active { background: var(--vienna); border-color: var(--vienna); }
+
+.btn-primary {
+  padding: 8px 18px; border-radius: 20px; font-size: .82rem;
+  font-weight: 600; border: none; background: var(--accent);
+  color: #fff; cursor: pointer; transition: var(--transition);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary:hover { background: var(--accent-hover); }
+
+.expense-list { display: flex; flex-direction: column; gap: 6px; }
+
+.expense-item {
+  display: grid; grid-template-columns: 4px 1fr auto;
+  gap: 0; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; cursor: pointer; transition: var(--transition);
+}
+.expense-item:hover { box-shadow: var(--shadow); border-color: var(--text-tertiary); }
+.expense-item .payer-stripe { border-radius: 4px 0 0 4px; }
+.expense-item .payer-stripe.matt { background: var(--matt); }
+.expense-item .payer-stripe.vienna { background: var(--vienna); }
+.expense-item-body {
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 4px;
+  min-width: 0;
+}
+.expense-item-top {
+  display: flex; align-items: center; gap: 8px;
+}
+.expense-desc {
+  font-weight: 600; font-size: .88rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1; min-width: 0;
+}
+.category-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.expense-meta {
+  display: flex; gap: 8px; font-size: .74rem; color: var(--text-tertiary);
+  align-items: center;
+}
+.expense-meta .tag {
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--accent-light); color: var(--accent);
+  font-weight: 500; font-size: .7rem;
+}
+.expense-amount-col {
+  padding: 12px 14px; display: flex; flex-direction: column;
+  align-items: flex-end; justify-content: center; gap: 2px;
+}
+.expense-amount {
+  font-weight: 700; font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.expense-for {
+  font-size: .7rem; color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
+/* ─── INLINE EXPENSE FORM ─── */
+.inline-expense-form {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px; margin-bottom: 12px;
+}
+.ief-row {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end;
+}
+.ief-field { display: flex; flex-direction: column; gap: 3px; }
+.ief-field label {
+  font-size: .66rem; font-weight: 600; color: var(--text-tertiary);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.ief-field input, .ief-field select {
+  padding: 7px 8px; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); background: var(--surface-raised);
+  color: var(--text); font-size: .82rem; font-family: var(--font-body);
+  transition: var(--transition);
+}
+.ief-field input:focus, .ief-field select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-light);
+}
+.ief-desc { flex: 2; min-width: 120px; }
+.ief-amount { flex: 0 0 85px; }
+.ief-amount input { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.ief-currency select { width: 72px; }
+.ief-category select { width: 110px; }
+.ief-date { flex: 0 0 auto; }
+.ief-paidby select, .ief-for select { width: 78px; }
+.ief-split { flex: 0 0 52px; }
+.ief-split input { text-align: center; font-variant-numeric: tabular-nums; }
+.ief-add { flex: 0 0 auto; }
+.ief-add button {
+  padding: 7px 14px; border: none; border-radius: var(--radius-sm);
+  background: var(--accent); color: #fff; font-size: .82rem;
+  font-weight: 600; cursor: pointer; transition: var(--transition);
+  font-family: var(--font-body); white-space: nowrap;
+}
+.ief-add button:hover { background: var(--accent-hover); }
+
+.empty-state {
+  text-align: center; padding: 60px 20px;
+  color: var(--text-secondary);
+}
+.empty-state .empty-icon {
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--accent-light); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 16px; font-size: 1.3rem;
+}
+.empty-state p { font-size: .9rem; margin-bottom: 20px; }
+
+/* ─── MODALS ─── */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: none; align-items: flex-end; justify-content: center;
+  z-index: 100; padding: 16px;
+}
+.modal-overlay.open { display: flex; }
+@media (min-width: 540px) {
+  .modal-overlay { align-items: center; }
+}
+.modal {
+  background: var(--surface); border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  width: 100%; max-width: 480px; max-height: 90vh;
+  overflow-y: auto; box-shadow: var(--shadow-lg);
+}
+@media (min-width: 540px) {
+  .modal { border-radius: var(--radius-lg); }
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 24px 0; position: sticky; top: 0;
+  background: var(--surface); z-index: 1;
+}
+.modal-header h3 {
+  font-family: var(--font-display); font-size: 1.1rem; font-weight: 700;
+}
+.modal-close {
+  width: 32px; height: 32px; border-radius: var(--radius-sm);
+  border: none; background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-size: 1.2rem; display: flex;
+  align-items: center; justify-content: center;
+}
+.modal-close:hover { background: var(--surface-raised); }
+.modal-body { padding: 20px 24px 24px; }
+
+.form-group { margin-bottom: 16px; }
+.form-label {
+  display: block; font-size: .76rem; font-weight: 600;
+  color: var(--text-secondary); margin-bottom: 6px;
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.form-input, .form-select {
+  width: 100%; padding: 10px 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-raised);
+  color: var(--text); font-size: .9rem; font-family: var(--font-body);
+  transition: var(--transition);
+}
+.form-input:focus, .form-select:focus {
+  outline: none; border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+.form-input.amount-input {
+  font-size: 1.4rem; font-weight: 700;
+  font-variant-numeric: tabular-nums; text-align: right;
+  padding: 14px 16px;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.toggle-group {
+  display: flex; gap: 0; border: 1px solid var(--border);
+  border-radius: var(--radius-sm); overflow: hidden;
+}
+.toggle-btn {
+  flex: 1; padding: 9px 12px; border: none;
+  background: var(--surface-raised); color: var(--text-secondary);
+  font-size: .82rem; font-weight: 500; cursor: pointer;
+  transition: var(--transition); font-family: var(--font-body);
+}
+.toggle-btn + .toggle-btn { border-left: 1px solid var(--border); }
+.toggle-btn.active { font-weight: 700; }
+.toggle-btn.active.matt { background: var(--matt-light); color: var(--matt); }
+.toggle-btn.active.vienna { background: var(--vienna-light); color: var(--vienna); }
+.toggle-btn.active.both { background: var(--accent-light); color: var(--accent); }
+
+.split-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--surface-raised);
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+}
+.split-row input[type="range"] {
+  flex: 1; accent-color: var(--accent);
+}
+.split-labels {
+  display: flex; justify-content: space-between;
+  font-size: .74rem; color: var(--text-tertiary); margin-top: 4px;
+}
+
+.category-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.category-option {
+  padding: 8px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface-raised);
+  cursor: pointer; font-size: .78rem; font-weight: 500;
+  color: var(--text-secondary); transition: var(--transition);
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap; overflow: hidden;
+}
+.category-option:hover { border-color: var(--text-tertiary); }
+.category-option.active { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 600; }
+
+.modal-footer {
+  display: flex; gap: 10px; justify-content: flex-end;
+  padding-top: 8px;
+}
+.btn-secondary {
+  padding: 9px 18px; border-radius: 20px; font-size: .82rem;
+  font-weight: 500; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-secondary);
+  cursor: pointer; transition: var(--transition);
+  font-family: var(--font-body);
+}
+.btn-secondary:hover { border-color: var(--text-tertiary); }
+.btn-danger {
+  padding: 9px 18px; border-radius: 20px; font-size: .82rem;
+  font-weight: 500; border: 1px solid var(--danger);
+  background: var(--danger-light); color: var(--danger);
+  cursor: pointer; transition: var(--transition);
+  font-family: var(--font-body);
+}
+.btn-danger:hover { background: var(--danger); color: #fff; }
+
+.btn-full {
+  width: 100%; padding: 12px; border-radius: var(--radius-sm);
+  font-size: .9rem; font-weight: 600; border: none;
+  background: var(--accent); color: #fff; cursor: pointer;
+  transition: var(--transition); font-family: var(--font-body);
+}
+.btn-full:hover { background: var(--accent-hover); }
+
+/* ─── DROPDOWN MENU ─── */
+.dropdown { position: relative; }
+.dropdown-menu {
+  position: absolute; right: 0; top: 100%; margin-top: 4px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); box-shadow: var(--shadow-md);
+  min-width: 180px; z-index: 50; display: none;
+  overflow: hidden;
+}
+.dropdown-menu.open { display: block; }
+.dropdown-item {
+  display: block; width: 100%; padding: 10px 16px;
+  border: none; background: none; text-align: left;
+  font-size: .84rem; color: var(--text); cursor: pointer;
+  font-family: var(--font-body); transition: var(--transition);
+}
+.dropdown-item:hover { background: var(--surface-raised); }
+.dropdown-item.danger { color: var(--danger); }
+.dropdown-item.danger:hover { background: var(--danger-light); }
+.dropdown-sep { height: 1px; background: var(--border-light); margin: 4px 0; }
+
+/* ─── CONFIRM DIALOG ─── */
+.confirm-body { text-align: center; }
+.confirm-body p { font-size: .92rem; margin-bottom: 20px; color: var(--text-secondary); }
+.confirm-actions { display: flex; gap: 10px; justify-content: center; }
+
+/* ─── DATA MENU ─── */
+.data-menu-content { padding: 16px 0; }
+.data-menu-content .action-row {
+  display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 540px) {
+  .app { padding: 0 12px 100px; }
+  .app-header { padding: 16px 0 8px; }
+  .app-header h1 { font-size: 1.15rem; }
+  .settlement-summary { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .category-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.fab {
+  position: fixed; bottom: 24px; right: 24px;
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--accent); color: #fff; border: none;
+  box-shadow: var(--shadow-md); cursor: pointer;
+  font-size: 1.5rem; display: none;
+  align-items: center; justify-content: center;
+  z-index: 40; transition: var(--transition);
+}
+.fab:hover { background: var(--accent-hover); box-shadow: var(--shadow-lg); }
+.fab.visible { display: none; }
+
+input[type="file"] { display: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}
+</style>
+
+<div class="app" id="app">
+  <header class="app-header">
+    <h1>Matt <span>&</span> Vienna</h1>
+    <div class="header-actions">
+      <div class="dropdown">
+        <button class="icon-btn" id="data-btn" title="Data">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v18"/><path d="M5 12h14"/><path d="M5 6h14"/><path d="M5 18h14"/>
+          </svg>
+        </button>
+        <div class="dropdown-menu" id="data-menu">
+          <button class="dropdown-item" id="export-btn">Export data (JSON)</button>
+          <button class="dropdown-item" id="import-btn">Import data (JSON)</button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item danger" id="clear-all-btn">Clear all data</button>
+        </div>
+      </div>
+      <button class="icon-btn" id="theme-btn" title="Toggle theme">
+        <svg id="theme-icon-light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg id="theme-icon-dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <nav class="session-bar" id="session-bar"></nav>
+  <main id="main-content"></main>
+</div>
+
+<button class="fab" id="fab">+</button>
+
+<div class="modal-overlay" id="expense-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="expense-modal-title">Add expense</h3>
+      <button class="modal-close" onclick="closeModal('expense-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Amount</label>
+        <div class="form-row">
+          <input type="number" class="form-input amount-input" id="exp-amount" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
+          <select class="form-select" id="exp-currency" style="align-self:end"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input type="text" class="form-input" id="exp-desc" placeholder="What was it for?">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <div class="category-grid" id="exp-category-grid"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-input" id="exp-date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Paid by</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn matt active" data-value="matt" onclick="setToggle('exp-paidby',this)">Matt</button>
+            <button type="button" class="toggle-btn vienna" data-value="vienna" onclick="setToggle('exp-paidby',this)">Vienna</button>
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">For whom</label>
+        <div class="toggle-group" id="exp-forwhom-group">
+          <button type="button" class="toggle-btn matt" data-value="matt" onclick="setToggle('exp-forwhom',this)">Matt</button>
+          <button type="button" class="toggle-btn both active" data-value="both" onclick="setToggle('exp-forwhom',this)">Both</button>
+          <button type="button" class="toggle-btn vienna" data-value="vienna" onclick="setToggle('exp-forwhom',this)">Vienna</button>
+        </div>
+      </div>
+      <div class="form-group" id="split-group" style="display:none">
+        <label class="form-label">Split ratio</label>
+        <div class="split-row">
+          <span style="font-size:.8rem;font-weight:600;color:var(--matt)">M</span>
+          <input type="range" id="exp-split" min="0" max="100" value="50" oninput="updateSplitLabel()">
+          <span style="font-size:.8rem;font-weight:600;color:var(--vienna)">V</span>
+        </div>
+        <div class="split-labels">
+          <span id="split-matt-label">Matt: 50%</span>
+          <span id="split-vienna-label">Vienna: 50%</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="exp-delete-btn" style="display:none" onclick="deleteEditingExpense()">Delete</button>
+        <button class="btn-full" id="exp-save-btn" onclick="saveExpense()">Add expense</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="session-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="session-modal-title">New session</h3>
+      <button class="modal-close" onclick="closeModal('session-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Name</label>
+        <input type="text" class="form-input" id="ses-name" placeholder="e.g. Japan Trip July 2026">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Note (optional)</label>
+        <input type="text" class="form-input" id="ses-note" placeholder="Short description">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Default currency</label>
+        <select class="form-select" id="ses-currency"></select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-full" id="ses-save-btn" onclick="saveSession()">Create session</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-header">
+      <h3 id="confirm-title">Confirm</h3>
+      <button class="modal-close" onclick="closeModal('confirm-modal')">&times;</button>
+    </div>
+    <div class="modal-body confirm-body">
+      <p id="confirm-message">Are you sure?</p>
+      <div class="confirm-actions">
+        <button class="btn-secondary" onclick="closeModal('confirm-modal')">Cancel</button>
+        <button class="btn-danger" id="confirm-action-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept=".json">
+
+<script>
+const CATEGORIES = {
+  groceries:     { name: 'Groceries',     color: '#3A9E6E' },
+  dining:        { name: 'Dining',        color: '#E8923E' },
+  transport:     { name: 'Transport',     color: '#5B8DB8' },
+  utilities:     { name: 'Utilities',     color: '#D4A03C' },
+  housing:       { name: 'Housing',       color: '#8B6B4A' },
+  entertainment: { name: 'Entertainment', color: '#9B6BB8' },
+  health:        { name: 'Health',        color: '#C94747' },
+  shopping:      { name: 'Shopping',      color: '#D4729B' },
+  subscriptions: { name: 'Subscriptions', color: '#2A9D8F' },
+  travel:        { name: 'Travel',        color: '#4AADE8' },
+  gifts:         { name: 'Gifts',         color: '#C9685A' },
+  other:         { name: 'Other',         color: '#8A8D95' }
+};
+
+const CURRENCIES = [
+  { code: 'HKD', name: 'Hong Kong Dollar' },
+  { code: 'USD', name: 'US Dollar' },
+  { code: 'EUR', name: 'Euro' },
+  { code: 'GBP', name: 'British Pound' },
+  { code: 'JPY', name: 'Japanese Yen' },
+  { code: 'KRW', name: 'South Korean Won' },
+  { code: 'TWD', name: 'Taiwan Dollar' },
+  { code: 'THB', name: 'Thai Baht' },
+  { code: 'SGD', name: 'Singapore Dollar' },
+  { code: 'CNY', name: 'Chinese Yuan' },
+  { code: 'MYR', name: 'Malaysian Ringgit' },
+  { code: 'VND', name: 'Vietnamese Dong' },
+  { code: 'PHP', name: 'Philippine Peso' },
+  { code: 'AUD', name: 'Australian Dollar' },
+  { code: 'NZD', name: 'New Zealand Dollar' },
+  { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'CHF', name: 'Swiss Franc' },
+];
+
+const STORAGE_KEY = 'mv-expense-tracker';
+
+let state = { sessions: [], expenses: [], activeView: 'overview' };
+let editingExpenseId = null;
+let editingSessionId = null;
+let activeFilters = { paidBy: null, category: null };
+let iefDefaults = { currency: null, category: 'other', date: null, paidBy: 'matt', forWhom: 'both', split: 50 };
+
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { const parsed = JSON.parse(raw); Object.assign(state, parsed); }
+  } catch(e) { /* start fresh */ }
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    sessions: state.sessions,
+    expenses: state.expenses,
+    activeView: state.activeView
+  }));
+}
+
+function escapeHtml(str) {
+  const el = document.createElement('span');
+  el.textContent = str || '';
+  return el.innerHTML;
+}
+
+function fmtCurrency(amount, currency) {
+  const noDecimal = ['JPY','KRW','VND'];
+  const digits = noDecimal.includes(currency) ? 0 : 2;
+  try {
+    return new Intl.NumberFormat('en-HK', {
+      style: 'currency', currency: currency,
+      minimumFractionDigits: digits, maximumFractionDigits: digits
+    }).format(amount);
+  } catch(e) {
+    return currency + ' ' + amount.toFixed(digits);
+  }
+}
+
+function fmtDate(dateStr) {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function calculateSettlement(sessionId) {
+  const expenses = state.expenses.filter(e => e.sessionId === sessionId);
+  const byCurrency = {};
+
+  expenses.forEach(e => {
+    if (!byCurrency[e.currency]) {
+      byCurrency[e.currency] = { mattPaid: 0, viennaPaid: 0, mattShare: 0, viennaShare: 0, total: 0, count: 0 };
+    }
+    const b = byCurrency[e.currency];
+    let mattShare, viennaShare;
+    if (e.forWhom === 'matt') { mattShare = e.amount; viennaShare = 0; }
+    else if (e.forWhom === 'vienna') { mattShare = 0; viennaShare = e.amount; }
+    else {
+      const ratio = e.splitRatio != null ? e.splitRatio : 50;
+      mattShare = e.amount * (ratio / 100);
+      viennaShare = e.amount - mattShare;
+    }
+    if (e.paidBy === 'matt') b.mattPaid += e.amount;
+    else b.viennaPaid += e.amount;
+    b.mattShare += mattShare;
+    b.viennaShare += viennaShare;
+    b.total += e.amount;
+    b.count++;
+  });
+
+  const result = {};
+  for (const [cur, b] of Object.entries(byCurrency)) {
+    result[cur] = {
+      mattPaid: b.mattPaid, viennaPaid: b.viennaPaid,
+      mattShare: b.mattShare, viennaShare: b.viennaShare,
+      balance: b.mattPaid - b.mattShare,
+      total: b.total, count: b.count
+    };
+  }
+  return result;
+}
+
+function populateCurrencySelect(selectEl, defaultVal) {
+  selectEl.innerHTML = CURRENCIES.map(c =>
+    `<option value="${c.code}" ${c.code === defaultVal ? 'selected' : ''}>${c.code} - ${escapeHtml(c.name)}</option>`
+  ).join('');
+}
+
+function populateCategoryGrid() {
+  const grid = document.getElementById('exp-category-grid');
+  grid.innerHTML = Object.entries(CATEGORIES).map(([key, cat]) =>
+    `<button type="button" class="category-option" data-value="${key}" onclick="selectCategory(this)">
+      <span class="category-dot" style="background:${cat.color}"></span>${escapeHtml(cat.name)}
+    </button>`
+  ).join('');
+}
+
+function selectCategory(btn) {
+  document.querySelectorAll('#exp-category-grid .category-option').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function setToggle(group, btn) {
+  const parent = btn.parentElement;
+  parent.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (group === 'exp-forwhom') {
+    const val = btn.dataset.value;
+    document.getElementById('split-group').style.display = val === 'both' ? '' : 'none';
+  }
+}
+
+function getToggleValue(group) {
+  if (group === 'exp-paidby') {
+    const container = document.querySelector('#expense-modal .toggle-group');
+    const active = container.querySelector('.toggle-btn.active');
+    return active ? active.dataset.value : 'matt';
+  }
+  if (group === 'exp-forwhom') {
+    const active = document.querySelector('#exp-forwhom-group .toggle-btn.active');
+    return active ? active.dataset.value : 'both';
+  }
+}
+
+function updateSplitLabel() {
+  const val = parseInt(document.getElementById('exp-split').value);
+  document.getElementById('split-matt-label').textContent = `Matt: ${val}%`;
+  document.getElementById('split-vienna-label').textContent = `Vienna: ${100 - val}%`;
+}
+
+/* ─── RENDER ─── */
+function render() {
+  renderSessionBar();
+  if (state.activeView === 'overview') {
+    renderOverview();
+  } else {
+    renderSessionDetail(state.activeView);
+    setupInlineForm();
+  }
+}
+
+function renderSessionBar() {
+  const bar = document.getElementById('session-bar');
+  let html = `<button class="session-tab ${state.activeView === 'overview' ? 'active' : ''}" onclick="switchView('overview')">Overview</button>`;
+  state.sessions.forEach(s => {
+    const isSettled = isSessionSettled(s.id);
+    html += `<button class="session-tab ${state.activeView === s.id ? 'active' : ''}" onclick="switchView('${s.id}')">${escapeHtml(s.name)}${isSettled ? '<span class="settled-dot"></span>' : ''}</button>`;
+  });
+  html += `<button class="add-session-tab" onclick="openSessionModal()" title="New session">+</button>`;
+  bar.innerHTML = html;
+}
+
+function isSessionSettled(sessionId) {
+  const session = state.sessions.find(s => s.id === sessionId);
+  if (session && session.settled) return true;
+  const settlement = calculateSettlement(sessionId);
+  return Object.values(settlement).every(s => Math.abs(s.balance) < 0.005);
+}
+
+function renderOverview() {
+  const main = document.getElementById('main-content');
+  if (state.sessions.length === 0) {
+    main.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        </div>
+        <p>Start tracking shared expenses by creating your first session.</p>
+        <button class="btn-primary" onclick="openSessionModal()">Create session</button>
+      </div>`;
+    return;
+  }
+
+  let html = '<div class="overview-grid">';
+  state.sessions.forEach(s => {
+    const settlement = calculateSettlement(s.id);
+    const expCount = state.expenses.filter(e => e.sessionId === s.id).length;
+    const settled = s.settled || Object.values(settlement).every(v => Math.abs(v.balance) < 0.005);
+
+    html += `<div class="session-card ${settled ? 'settled' : ''}" onclick="switchView('${s.id}')">`;
+    html += `<div class="session-card-name">${escapeHtml(s.name)}</div>`;
+    if (s.note) html += `<div class="session-card-note">${escapeHtml(s.note)}</div>`;
+    html += `<div class="session-card-stats"><span><strong>${expCount}</strong> expense${expCount !== 1 ? 's' : ''}</span>`;
+
+    const totals = {};
+    Object.entries(settlement).forEach(([cur, v]) => {
+      if (!totals[cur]) totals[cur] = 0;
+      totals[cur] += v.total;
+    });
+    const totalParts = Object.entries(totals).map(([cur, amt]) => fmtCurrency(amt, cur));
+    if (totalParts.length > 0) html += `<span>Total: <strong>${totalParts.join(' + ')}</strong></span>`;
+    html += '</div>';
+
+    html += '<div class="session-card-settlement">';
+    if (settled && expCount > 0) {
+      html += `<span class="settled-badge">Settled</span>`;
+    } else if (Object.keys(settlement).length > 0) {
+      Object.entries(settlement).forEach(([cur, v]) => {
+        if (Math.abs(v.balance) < 0.005) return;
+        const owes = v.balance > 0 ? 'Vienna' : 'Matt';
+        const owed = v.balance > 0 ? 'Matt' : 'Vienna';
+        html += `<div class="settlement-line">
+          <span>${owes}</span><span class="arrow">&rarr;</span><span>${owed}</span>
+          <span class="amount">${fmtCurrency(Math.abs(v.balance), cur)}</span>
+        </div>`;
+      });
+    }
+    html += '</div></div>';
+  });
+
+  html += `<div class="new-session-card" onclick="openSessionModal()">
+    <div class="plus">+</div><span>New session</span>
+  </div>`;
+  html += '</div>';
+  main.innerHTML = html;
+}
+
+function renderSessionDetail(sessionId) {
+  const session = state.sessions.find(s => s.id === sessionId);
+  if (!session) { switchView('overview'); return; }
+
+  const settlement = calculateSettlement(sessionId);
+  let expenses = state.expenses.filter(e => e.sessionId === sessionId);
+
+  if (activeFilters.paidBy) expenses = expenses.filter(e => e.paidBy === activeFilters.paidBy);
+  if (activeFilters.category) expenses = expenses.filter(e => e.category === activeFilters.category);
+
+  expenses.sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.createdAt - a.createdAt);
+
+  const main = document.getElementById('main-content');
+  let html = '';
+
+  html += `<div class="session-header">
+    <div class="session-header-left">
+      <h2>${escapeHtml(session.name)}</h2>
+      ${session.note ? `<div class="note">${escapeHtml(session.note)}</div>` : ''}
+    </div>
+    <div class="session-header-actions">
+      <div class="dropdown">
+        <button class="icon-btn" onclick="toggleDropdown(event, 'session-dropdown')">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        </button>
+        <div class="dropdown-menu" id="session-dropdown">
+          <button class="dropdown-item" onclick="editSession('${sessionId}')">Edit session</button>
+          <button class="dropdown-item" onclick="toggleSettle('${sessionId}')">${session.settled ? 'Mark unsettled' : 'Mark as settled'}</button>
+          <div class="dropdown-sep"></div>
+          <button class="dropdown-item danger" onclick="confirmDeleteSession('${sessionId}')">Delete session</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  const allSettled = Object.values(settlement).every(v => Math.abs(v.balance) < 0.005) && Object.keys(settlement).length > 0;
+
+  html += `<div class="settlement-banner ${allSettled || session.settled ? 'all-settled' : ''}">`;
+  html += `<div class="settlement-title">Settlement</div>`;
+  html += '<div class="settlement-items">';
+
+  if (Object.keys(settlement).length === 0) {
+    html += '<div style="font-size:.88rem;color:var(--text-secondary)">No expenses yet</div>';
+  } else if (allSettled || session.settled) {
+    html += `<div class="settlement-all-clear">All settled</div>`;
+  } else {
+    Object.entries(settlement).forEach(([cur, v]) => {
+      if (Math.abs(v.balance) < 0.005) return;
+      const fromPerson = v.balance > 0 ? 'vienna' : 'matt';
+      const toPerson = v.balance > 0 ? 'matt' : 'vienna';
+      html += `<div class="settlement-item">
+        <span class="person-badge ${fromPerson}">${fromPerson === 'matt' ? 'Matt' : 'Vienna'}</span>
+        <span class="arrow-icon">&rarr;</span>
+        <span class="person-badge ${toPerson}">${toPerson === 'matt' ? 'Matt' : 'Vienna'}</span>
+        <span class="settlement-amount">${fmtCurrency(Math.abs(v.balance), cur)}</span>
+      </div>`;
+    });
+  }
+  html += '</div>';
+
+  if (Object.keys(settlement).length > 0) {
+    let mattTotal = {}, viennaTotal = {};
+    Object.entries(settlement).forEach(([cur, v]) => {
+      mattTotal[cur] = v.mattPaid;
+      viennaTotal[cur] = v.viennaPaid;
+    });
+    const mattStr = Object.entries(mattTotal).filter(([,a]) => a > 0).map(([c,a]) => fmtCurrency(a,c)).join(' + ') || '0';
+    const viennaStr = Object.entries(viennaTotal).filter(([,a]) => a > 0).map(([c,a]) => fmtCurrency(a,c)).join(' + ') || '0';
+
+    html += `<div class="settlement-summary">
+      <div class="summary-block"><div class="label">Matt paid</div><div class="value matt">${mattStr}</div></div>
+      <div class="summary-block"><div class="label">Vienna paid</div><div class="value vienna">${viennaStr}</div></div>
+    </div>`;
+  }
+  html += '</div>';
+
+  // Inline expense form
+  const iefCur = iefDefaults.currency || session.defaultCurrency;
+  const curOpts = CURRENCIES.map(c =>
+    `<option value="${c.code}" ${c.code === iefCur ? 'selected' : ''}>${c.code}</option>`
+  ).join('');
+  const catOpts = Object.entries(CATEGORIES).map(([key, cat]) =>
+    `<option value="${key}" ${key === iefDefaults.category ? 'selected' : ''}>${escapeHtml(cat.name)}</option>`
+  ).join('');
+  const iefDate = iefDefaults.date || todayStr();
+  const splitVis = iefDefaults.forWhom === 'both' ? '' : 'style="display:none"';
+
+  html += `<div class="inline-expense-form">
+    <div class="ief-row">
+      <div class="ief-field ief-desc">
+        <label>Description</label>
+        <input type="text" id="ief-desc" placeholder="What was it for?">
+      </div>
+      <div class="ief-field ief-amount">
+        <label>Amount</label>
+        <input type="number" id="ief-amount" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
+      </div>
+      <div class="ief-field ief-currency">
+        <label>Currency</label>
+        <select id="ief-currency">${curOpts}</select>
+      </div>
+      <div class="ief-field ief-category">
+        <label>Category</label>
+        <select id="ief-category">${catOpts}</select>
+      </div>
+      <div class="ief-field ief-date">
+        <label>Date</label>
+        <input type="date" id="ief-date" value="${iefDate}">
+      </div>
+      <div class="ief-field ief-paidby">
+        <label>Paid by</label>
+        <select id="ief-paidby">
+          <option value="matt" ${iefDefaults.paidBy==='matt'?'selected':''}>Matt</option>
+          <option value="vienna" ${iefDefaults.paidBy==='vienna'?'selected':''}>Vienna</option>
+        </select>
+      </div>
+      <div class="ief-field ief-for">
+        <label>For</label>
+        <select id="ief-for" onchange="updateIefSplit()">
+          <option value="both" ${iefDefaults.forWhom==='both'?'selected':''}>Both</option>
+          <option value="matt" ${iefDefaults.forWhom==='matt'?'selected':''}>Matt</option>
+          <option value="vienna" ${iefDefaults.forWhom==='vienna'?'selected':''}>Vienna</option>
+        </select>
+      </div>
+      <div class="ief-field ief-split" id="ief-split-field" ${splitVis}>
+        <label>Matt %</label>
+        <input type="number" id="ief-split" value="${iefDefaults.split}" min="0" max="100" step="5">
+      </div>
+      <div class="ief-field ief-add">
+        <label>&nbsp;</label>
+        <button onclick="addFromInlineForm()">Add</button>
+      </div>
+    </div>
+  </div>`;
+
+  const allExpenses = state.expenses.filter(e => e.sessionId === sessionId);
+  if (allExpenses.length > 0) {
+    const usedCategories = [...new Set(allExpenses.map(e => e.category))];
+    html += `<div class="expense-toolbar">
+      <div class="expense-toolbar-left">
+        <button class="filter-chip ${!activeFilters.paidBy ? 'active' : ''}" onclick="setFilter('paidBy',null)">All</button>
+        <button class="filter-chip matt ${activeFilters.paidBy==='matt' ? 'active' : ''}" onclick="setFilter('paidBy','matt')">Matt</button>
+        <button class="filter-chip vienna ${activeFilters.paidBy==='vienna' ? 'active' : ''}" onclick="setFilter('paidBy','vienna')">Vienna</button>
+        ${usedCategories.length > 1 ? `
+          <select class="form-select" style="width:auto;padding:5px 10px;font-size:.76rem;border-radius:16px" onchange="setFilter('category',this.value||null)">
+            <option value="">All categories</option>
+            ${usedCategories.map(c => `<option value="${c}" ${activeFilters.category===c?'selected':''}>${escapeHtml(CATEGORIES[c]?.name || c)}</option>`).join('')}
+          </select>` : ''}
+      </div>
+    </div>`;
+  }
+
+  if (expenses.length === 0 && allExpenses.length === 0) {
+    html += '<div class="empty-state"><p style="margin:0">Add your first expense above.</p></div>';
+  } else if (expenses.length === 0) {
+    html += '<div class="empty-state"><p>No expenses match the current filter.</p></div>';
+  } else {
+    html += '<div class="expense-list">';
+    expenses.forEach(e => {
+      const cat = CATEGORIES[e.category] || CATEGORIES.other;
+      const forLabel = e.forWhom === 'both'
+        ? (e.splitRatio != null && e.splitRatio !== 50 ? `Both (${e.splitRatio}/${100-e.splitRatio})` : 'Both')
+        : (e.forWhom === 'matt' ? 'Matt' : 'Vienna');
+
+      html += `<div class="expense-item" onclick="openExpenseModal('${e.id}')">
+        <div class="payer-stripe ${e.paidBy}"></div>
+        <div class="expense-item-body">
+          <div class="expense-item-top">
+            <span class="category-dot" style="background:${cat.color}"></span>
+            <span class="expense-desc">${escapeHtml(e.description || 'Untitled')}</span>
+          </div>
+          <div class="expense-meta">
+            <span>${fmtDate(e.date)}</span>
+            <span class="tag">${escapeHtml(cat.name)}</span>
+            <span>${e.paidBy === 'matt' ? 'Matt' : 'Vienna'} paid</span>
+          </div>
+        </div>
+        <div class="expense-amount-col">
+          <span class="expense-amount">${fmtCurrency(e.amount, e.currency)}</span>
+          <span class="expense-for">for ${forLabel}</span>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  }
+
+  main.innerHTML = html;
+}
+
+function addFromInlineForm() {
+  const amount = parseFloat(document.getElementById('ief-amount').value);
+  if (isNaN(amount) || amount <= 0) {
+    document.getElementById('ief-amount').focus();
+    return;
+  }
+
+  const desc = document.getElementById('ief-desc').value.trim();
+  const currency = document.getElementById('ief-currency').value;
+  const category = document.getElementById('ief-category').value;
+  const date = document.getElementById('ief-date').value || todayStr();
+  const paidBy = document.getElementById('ief-paidby').value;
+  const forWhom = document.getElementById('ief-for').value;
+  const splitRatio = forWhom === 'both' ? (parseInt(document.getElementById('ief-split').value) || 50) : 50;
+
+  iefDefaults = { currency, category, date, paidBy, forWhom, split: splitRatio };
+
+  state.expenses.push({
+    id: uid(), sessionId: state.activeView,
+    amount, currency, description: desc, date, paidBy, forWhom, splitRatio, category,
+    createdAt: Date.now()
+  });
+
+  saveState();
+  render();
+
+  const descField = document.getElementById('ief-desc');
+  if (descField) descField.focus();
+}
+
+function setupInlineForm() {
+  const form = document.querySelector('.inline-expense-form');
+  if (!form) return;
+  form.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addFromInlineForm();
+    }
+  });
+}
+
+function updateIefSplit() {
+  const forEl = document.getElementById('ief-for');
+  const splitField = document.getElementById('ief-split-field');
+  if (forEl && splitField) {
+    splitField.style.display = forEl.value === 'both' ? '' : 'none';
+  }
+}
+
+function switchView(view) {
+  state.activeView = view;
+  activeFilters = { paidBy: null, category: null };
+  saveState();
+  render();
+}
+
+function setFilter(key, value) {
+  activeFilters[key] = value;
+  render();
+}
+
+/* ─── MODALS ─── */
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); closeAllDropdowns(); }
+
+function openExpenseModal(expenseId) {
+  editingExpenseId = expenseId || null;
+  const session = state.sessions.find(s => s.id === state.activeView);
+  if (!session) return;
+
+  populateCurrencySelect(document.getElementById('exp-currency'), session.defaultCurrency);
+  populateCategoryGrid();
+
+  if (editingExpenseId) {
+    const exp = state.expenses.find(e => e.id === editingExpenseId);
+    if (!exp) return;
+    document.getElementById('expense-modal-title').textContent = 'Edit expense';
+    document.getElementById('exp-save-btn').textContent = 'Save changes';
+    document.getElementById('exp-delete-btn').style.display = '';
+    document.getElementById('exp-amount').value = exp.amount;
+    document.getElementById('exp-currency').value = exp.currency;
+    document.getElementById('exp-desc').value = exp.description || '';
+    document.getElementById('exp-date').value = exp.date;
+
+    document.querySelectorAll('#exp-category-grid .category-option').forEach(b => {
+      b.classList.toggle('active', b.dataset.value === exp.category);
+    });
+
+    const paidByBtns = document.querySelectorAll('#expense-modal .toggle-group')[0].querySelectorAll('.toggle-btn');
+    paidByBtns.forEach(b => b.classList.toggle('active', b.dataset.value === exp.paidBy));
+
+    const forWhomBtns = document.getElementById('exp-forwhom-group').querySelectorAll('.toggle-btn');
+    forWhomBtns.forEach(b => b.classList.toggle('active', b.dataset.value === exp.forWhom));
+
+    document.getElementById('split-group').style.display = exp.forWhom === 'both' ? '' : 'none';
+    document.getElementById('exp-split').value = exp.splitRatio != null ? exp.splitRatio : 50;
+    updateSplitLabel();
+  } else {
+    document.getElementById('expense-modal-title').textContent = 'Add expense';
+    document.getElementById('exp-save-btn').textContent = 'Add expense';
+    document.getElementById('exp-delete-btn').style.display = 'none';
+    document.getElementById('exp-amount').value = '';
+    document.getElementById('exp-desc').value = '';
+    document.getElementById('exp-date').value = todayStr();
+
+    document.querySelectorAll('#exp-category-grid .category-option').forEach((b, i) => {
+      b.classList.toggle('active', i === Object.keys(CATEGORIES).length - 1);
+    });
+
+    const paidByBtns = document.querySelectorAll('#expense-modal .toggle-group')[0].querySelectorAll('.toggle-btn');
+    paidByBtns.forEach(b => b.classList.toggle('active', b.dataset.value === 'matt'));
+
+    const forWhomBtns = document.getElementById('exp-forwhom-group').querySelectorAll('.toggle-btn');
+    forWhomBtns.forEach(b => b.classList.toggle('active', b.dataset.value === 'both'));
+
+    document.getElementById('split-group').style.display = '';
+    document.getElementById('exp-split').value = 50;
+    updateSplitLabel();
+  }
+
+  openModal('expense-modal');
+  setTimeout(() => document.getElementById('exp-amount').focus(), 100);
+}
+
+function saveExpense() {
+  const amount = parseFloat(document.getElementById('exp-amount').value);
+  if (isNaN(amount) || amount <= 0) {
+    document.getElementById('exp-amount').focus();
+    return;
+  }
+
+  const currency = document.getElementById('exp-currency').value;
+  const description = document.getElementById('exp-desc').value.trim();
+  const date = document.getElementById('exp-date').value || todayStr();
+  const paidBy = getToggleValue('exp-paidby');
+  const forWhom = getToggleValue('exp-forwhom');
+  const splitRatio = forWhom === 'both' ? parseInt(document.getElementById('exp-split').value) : 50;
+
+  const activeCategory = document.querySelector('#exp-category-grid .category-option.active');
+  const category = activeCategory ? activeCategory.dataset.value : 'other';
+
+  if (editingExpenseId) {
+    const idx = state.expenses.findIndex(e => e.id === editingExpenseId);
+    if (idx >= 0) {
+      state.expenses[idx] = { ...state.expenses[idx], amount, currency, description, date, paidBy, forWhom, splitRatio, category };
+    }
+  } else {
+    state.expenses.push({
+      id: uid(), sessionId: state.activeView,
+      amount, currency, description, date, paidBy, forWhom, splitRatio, category,
+      createdAt: Date.now()
+    });
+  }
+
+  saveState();
+  closeModal('expense-modal');
+  render();
+}
+
+function deleteEditingExpense() {
+  if (!editingExpenseId) return;
+  showConfirm('Delete expense', 'This expense will be permanently removed.', () => {
+    state.expenses = state.expenses.filter(e => e.id !== editingExpenseId);
+    editingExpenseId = null;
+    saveState();
+    closeModal('expense-modal');
+    render();
+  });
+}
+
+function openSessionModal(sessionId) {
+  editingSessionId = sessionId || null;
+  populateCurrencySelect(document.getElementById('ses-currency'), 'HKD');
+
+  if (editingSessionId) {
+    const ses = state.sessions.find(s => s.id === editingSessionId);
+    if (!ses) return;
+    document.getElementById('session-modal-title').textContent = 'Edit session';
+    document.getElementById('ses-save-btn').textContent = 'Save changes';
+    document.getElementById('ses-name').value = ses.name;
+    document.getElementById('ses-note').value = ses.note || '';
+    document.getElementById('ses-currency').value = ses.defaultCurrency;
+  } else {
+    document.getElementById('session-modal-title').textContent = 'New session';
+    document.getElementById('ses-save-btn').textContent = 'Create session';
+    document.getElementById('ses-name').value = '';
+    document.getElementById('ses-note').value = '';
+    document.getElementById('ses-currency').value = 'HKD';
+  }
+
+  closeAllDropdowns();
+  openModal('session-modal');
+  setTimeout(() => document.getElementById('ses-name').focus(), 100);
+}
+
+function saveSession() {
+  const name = document.getElementById('ses-name').value.trim();
+  if (!name) { document.getElementById('ses-name').focus(); return; }
+  const note = document.getElementById('ses-note').value.trim();
+  const defaultCurrency = document.getElementById('ses-currency').value;
+
+  if (editingSessionId) {
+    const ses = state.sessions.find(s => s.id === editingSessionId);
+    if (ses) { ses.name = name; ses.note = note; ses.defaultCurrency = defaultCurrency; }
+  } else {
+    const newSession = { id: uid(), name, note, defaultCurrency, settled: false, createdAt: Date.now() };
+    state.sessions.push(newSession);
+    state.activeView = newSession.id;
+  }
+
+  saveState();
+  closeModal('session-modal');
+  render();
+}
+
+function editSession(sessionId) {
+  closeAllDropdowns();
+  openSessionModal(sessionId);
+}
+
+function toggleSettle(sessionId) {
+  const ses = state.sessions.find(s => s.id === sessionId);
+  if (ses) { ses.settled = !ses.settled; saveState(); render(); }
+  closeAllDropdowns();
+}
+
+function confirmDeleteSession(sessionId) {
+  closeAllDropdowns();
+  const ses = state.sessions.find(s => s.id === sessionId);
+  if (!ses) return;
+  const expCount = state.expenses.filter(e => e.sessionId === sessionId).length;
+  showConfirm(
+    'Delete session',
+    `"${ses.name}" and its ${expCount} expense${expCount !== 1 ? 's' : ''} will be permanently deleted.`,
+    () => {
+      state.sessions = state.sessions.filter(s => s.id !== sessionId);
+      state.expenses = state.expenses.filter(e => e.sessionId !== sessionId);
+      if (state.activeView === sessionId) state.activeView = 'overview';
+      saveState();
+      render();
+    }
+  );
+}
+
+function showConfirm(title, message, onConfirm) {
+  document.getElementById('confirm-title').textContent = title;
+  document.getElementById('confirm-message').textContent = message;
+  const btn = document.getElementById('confirm-action-btn');
+  btn.textContent = 'Delete';
+  btn.onclick = () => { closeModal('confirm-modal'); onConfirm(); };
+  openModal('confirm-modal');
+}
+
+/* ─── DROPDOWN ─── */
+function toggleDropdown(e, id) {
+  e.stopPropagation();
+  const menu = document.getElementById(id);
+  const isOpen = menu.classList.contains('open');
+  closeAllDropdowns();
+  if (!isOpen) menu.classList.add('open');
+}
+function closeAllDropdowns() {
+  document.querySelectorAll('.dropdown-menu').forEach(m => m.classList.remove('open'));
+}
+document.addEventListener('click', closeAllDropdowns);
+
+/* ─── THEME ─── */
+function initTheme() {
+  const saved = localStorage.getItem('mv-theme');
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  updateThemeIcon();
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const isDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('mv-theme', next);
+  updateThemeIcon();
+}
+
+function updateThemeIcon() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const isDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.getElementById('theme-icon-light').style.display = isDark ? 'none' : '';
+  document.getElementById('theme-icon-dark').style.display = isDark ? '' : 'none';
+}
+
+document.getElementById('theme-btn').addEventListener('click', toggleTheme);
+
+/* ─── DATA MANAGEMENT ─── */
+document.getElementById('data-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  toggleDropdown(e, 'data-menu');
+});
+
+document.getElementById('export-btn').addEventListener('click', () => {
+  closeAllDropdowns();
+  const data = JSON.stringify({ sessions: state.sessions, expenses: state.expenses }, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `expenses-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById('import-btn').addEventListener('click', () => {
+  closeAllDropdowns();
+  document.getElementById('file-input').click();
+});
+
+document.getElementById('file-input').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.sessions && data.expenses) {
+        state.sessions = data.sessions;
+        state.expenses = data.expenses;
+        state.activeView = 'overview';
+        saveState();
+        render();
+      }
+    } catch(err) {
+      alert('Invalid file format.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('clear-all-btn').addEventListener('click', () => {
+  closeAllDropdowns();
+  showConfirm('Clear all data', 'All sessions and expenses will be permanently deleted. This cannot be undone.', () => {
+    state.sessions = [];
+    state.expenses = [];
+    state.activeView = 'overview';
+    saveState();
+    render();
+  });
+});
+
+/* ─── FAB ─── */
+document.getElementById('fab').addEventListener('click', () => {
+  if (state.activeView !== 'overview') openExpenseModal();
+});
+
+/* ─── KEYBOARD ─── */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
+  }
+});
+
+/* ─── INIT ─── */
+initTheme();
+loadState();
+render();
+</script>
