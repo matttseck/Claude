@@ -309,12 +309,19 @@ body {
 .expense-list { display: flex; flex-direction: column; gap: 6px; }
 
 .expense-item {
-  display: grid; grid-template-columns: 4px 1fr auto;
+  display: grid; grid-template-columns: 4px 1fr auto auto;
   gap: 0; background: var(--surface);
   border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden; cursor: pointer; transition: var(--transition);
 }
 .expense-item:hover { box-shadow: var(--shadow); border-color: var(--text-tertiary); }
+.expense-delete {
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 10px; color: var(--text-tertiary);
+  transition: var(--transition); border: none; background: none;
+  cursor: pointer; font-size: 1.1rem;
+}
+.expense-delete:hover { color: var(--danger); background: var(--danger-light); }
 .expense-item .payer-stripe { border-radius: 4px 0 0 4px; }
 .expense-item .payer-stripe.matt { background: var(--matt); }
 .expense-item .payer-stripe.vienna { background: var(--vienna); }
@@ -1187,6 +1194,7 @@ function renderSessionDetail(sessionId) {
           <span class="expense-amount">${fmtCurrency(e.amount, e.currency)}</span>
           <span class="expense-for">for ${forLabel}</span>
         </div>
+        <button class="expense-delete" onclick="event.stopPropagation();quickDelete('${e.id}')" title="Delete">&times;</button>
       </div>`;
     });
     html += '</div>';
@@ -1363,6 +1371,12 @@ function deleteEditingExpense() {
     closeModal('expense-modal');
     render();
   });
+}
+
+function quickDelete(expenseId) {
+  state.expenses = state.expenses.filter(e => e.id !== expenseId);
+  saveState();
+  render();
 }
 
 function openSessionModal(sessionId) {
