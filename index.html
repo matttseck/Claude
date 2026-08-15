@@ -579,6 +579,49 @@ body {
   display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
 }
 
+/* ─── SYNC STATUS ─── */
+.sync-indicator {
+  display: flex; align-items: center; gap: 5px;
+  font-size: .72rem; color: var(--text-tertiary);
+  padding: 2px 0;
+}
+.sync-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0;
+}
+.sync-dot.connected { background: var(--success); }
+.sync-dot.disconnected { background: var(--danger); }
+.sync-dot.syncing { background: var(--warning); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+
+/* ─── SYNC SETUP MODAL ─── */
+.sync-setup-info {
+  font-size: .84rem; color: var(--text-secondary);
+  line-height: 1.6; margin-bottom: 16px;
+}
+.sync-setup-info ol {
+  padding-left: 20px; margin: 10px 0;
+}
+.sync-setup-info li {
+  margin-bottom: 6px;
+}
+.sync-setup-info code {
+  font-family: var(--font-mono); font-size: .78rem;
+  background: var(--surface-raised); border: 1px solid var(--border);
+  padding: 1px 5px; border-radius: 3px;
+}
+.sync-setup-info a {
+  color: var(--accent); text-decoration: none;
+}
+.sync-setup-info a:hover { text-decoration: underline; }
+.sync-connected-status {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px; background: #3a9e6e10; border: 1px solid var(--success);
+  border-radius: var(--radius-sm); margin-bottom: 16px;
+  font-size: .84rem; color: var(--success); font-weight: 600;
+}
+.sync-connected-status .sync-dot { width: 9px; height: 9px; }
+
 /* ─── RESPONSIVE ─── */
 @media (max-width: 540px) {
   .app { padding: 0 12px 100px; }
@@ -612,6 +655,15 @@ input[type="file"] { display: none; }
   <header class="app-header">
     <h1>Matt <span>&</span> Vienna</h1>
     <div class="header-actions">
+      <div class="sync-indicator" id="sync-indicator" style="display:none">
+        <span class="sync-dot" id="sync-dot"></span>
+        <span id="sync-label">Synced</span>
+      </div>
+      <button class="icon-btn" id="sync-btn" title="Cloud sync">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+        </svg>
+      </button>
       <div class="dropdown">
         <button class="icon-btn" id="data-btn" title="Data">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -742,6 +794,50 @@ input[type="file"] { display: none; }
       <div class="confirm-actions">
         <button class="btn-secondary" onclick="closeModal('confirm-modal')">Cancel</button>
         <button class="btn-danger" id="confirm-action-btn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sync-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Cloud Sync</h3>
+      <button class="modal-close" onclick="closeModal('sync-modal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="sync-status-connected" class="sync-connected-status" style="display:none">
+        <span class="sync-dot connected"></span>
+        <span>Connected &amp; syncing in real time</span>
+      </div>
+
+      <div class="sync-setup-info" id="sync-setup-guide">
+        <strong>Set up free real-time sync between your devices:</strong>
+        <ol>
+          <li>Go to <a href="https://console.firebase.google.com" target="_blank" rel="noopener">Firebase Console</a> and create a new project (no Google Analytics needed)</li>
+          <li>In the project, go to <strong>Build &rarr; Realtime Database</strong> and click <strong>Create Database</strong></li>
+          <li>Choose any region, then start in <strong>test mode</strong></li>
+          <li>Go to <strong>Project Settings</strong> (gear icon) &rarr; <strong>General</strong> &rarr; scroll to <strong>Your apps</strong> &rarr; click the web icon <code>&lt;/&gt;</code></li>
+          <li>Register an app (any nickname), then copy the config values below</li>
+        </ol>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Firebase Config (paste the whole object or fill fields)</label>
+        <textarea class="form-input" id="sync-config-paste" placeholder='Paste your firebaseConfig object here, e.g.:
+{
+  apiKey: "AIza...",
+  authDomain: "my-project.firebaseapp.com",
+  databaseURL: "https://my-project-default-rtdb.firebaseio.com",
+  projectId: "my-project"
+}' style="font-family:var(--font-mono);font-size:.78rem;height:120px;resize:vertical"></textarea>
+      </div>
+
+      <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
+        <button class="btn-danger" id="sync-disconnect-btn" style="display:none" onclick="disconnectSync()">Disconnect</button>
+        <div style="flex:1"></div>
+        <button class="btn-secondary" onclick="closeModal('sync-modal')">Cancel</button>
+        <button class="btn-full" style="width:auto;padding:10px 24px" onclick="connectSync()">Connect</button>
       </div>
     </div>
   </div>
@@ -1568,8 +1664,246 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+/* ─── CLOUD SYNC (Firebase Realtime Database) ─── */
+const SYNC_CONFIG_KEY = 'mv-expense-sync-config';
+let firebaseApp = null;
+let firebaseDb = null;
+let syncListener = null;
+let syncReady = false;
+let ignoreNextRemoteUpdate = false;
+
+function getSyncConfig() {
+  try {
+    const raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveSyncConfig(config) {
+  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
+}
+
+function clearSyncConfig() {
+  localStorage.removeItem(SYNC_CONFIG_KEY);
+}
+
+function parseFirebaseConfig(input) {
+  let text = input.trim();
+  // Handle JS object notation (unquoted keys)
+  text = text.replace(/(['"])?(\w+)(['"])?\s*:/g, '"$2":');
+  // Remove trailing commas
+  text = text.replace(/,\s*([}\]])/g, '$1');
+  // Ensure wrapped in braces
+  if (!text.startsWith('{')) text = '{' + text + '}';
+  try {
+    const obj = JSON.parse(text);
+    if (!obj.databaseURL && !obj.databaseUrl) return null;
+    return {
+      apiKey: obj.apiKey || '',
+      authDomain: obj.authDomain || '',
+      databaseURL: obj.databaseURL || obj.databaseUrl || '',
+      projectId: obj.projectId || '',
+      storageBucket: obj.storageBucket || '',
+      messagingSenderId: obj.messagingSenderId || '',
+      appId: obj.appId || ''
+    };
+  } catch { return null; }
+}
+
+function setSyncStatus(status) {
+  const indicator = document.getElementById('sync-indicator');
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-label');
+  if (!indicator) return;
+
+  indicator.style.display = 'flex';
+  dot.className = 'sync-dot ' + status;
+  if (status === 'connected') label.textContent = 'Synced';
+  else if (status === 'syncing') label.textContent = 'Syncing...';
+  else if (status === 'disconnected') label.textContent = 'Offline';
+}
+
+async function loadFirebaseSDK() {
+  if (window.firebase) return;
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  await new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function initSync(config) {
+  try {
+    setSyncStatus('syncing');
+    await loadFirebaseSDK();
+
+    if (firebaseApp) {
+      try { firebaseApp.delete(); } catch {}
+    }
+
+    firebaseApp = firebase.initializeApp(config, 'mv-expenses');
+    firebaseDb = firebase.database(firebaseApp);
+
+    const connRef = firebaseDb.ref('.info/connected');
+    connRef.on('value', (snap) => {
+      if (snap.val() === true) setSyncStatus('connected');
+      else setSyncStatus('disconnected');
+    });
+
+    const dataRef = firebaseDb.ref('expenses-data');
+
+    if (syncListener) {
+      try { dataRef.off('value', syncListener); } catch {}
+    }
+
+    // Push local data to remote if remote is empty
+    const snapshot = await dataRef.once('value');
+    if (!snapshot.exists() && (state.sessions.length > 0 || state.expenses.length > 0)) {
+      await dataRef.set({
+        sessions: state.sessions,
+        expenses: state.expenses,
+        lastUpdated: Date.now()
+      });
+    } else if (snapshot.exists()) {
+      const remote = snapshot.val();
+      // Merge: take whichever has more recent data
+      const localTime = Math.max(...state.expenses.map(e => e.createdAt || 0), ...state.sessions.map(s => s.createdAt || 0), 0);
+      const remoteTime = remote.lastUpdated || 0;
+      if (remoteTime > localTime || state.expenses.length === 0) {
+        state.sessions = remote.sessions || [];
+        state.expenses = remote.expenses || [];
+        saveStateLocal();
+        render();
+      } else {
+        await dataRef.set({
+          sessions: state.sessions,
+          expenses: state.expenses,
+          lastUpdated: Date.now()
+        });
+      }
+    }
+
+    syncListener = dataRef.on('value', (snap) => {
+      if (ignoreNextRemoteUpdate) { ignoreNextRemoteUpdate = false; return; }
+      if (!snap.exists()) return;
+      const remote = snap.val();
+      state.sessions = remote.sessions || [];
+      state.expenses = remote.expenses || [];
+      saveStateLocal();
+      render();
+      setSyncStatus('connected');
+    });
+
+    syncReady = true;
+    setSyncStatus('connected');
+  } catch (err) {
+    console.error('Sync init failed:', err);
+    setSyncStatus('disconnected');
+    syncReady = false;
+  }
+}
+
+function saveStateLocal() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({
+    sessions: state.sessions,
+    expenses: state.expenses,
+    activeView: state.activeView
+  }));
+}
+
+function pushToRemote() {
+  if (!syncReady || !firebaseDb) return;
+  ignoreNextRemoteUpdate = true;
+  setSyncStatus('syncing');
+  firebaseDb.ref('expenses-data').set({
+    sessions: state.sessions,
+    expenses: state.expenses,
+    lastUpdated: Date.now()
+  }).then(() => {
+    setSyncStatus('connected');
+  }).catch((err) => {
+    console.error('Sync push failed:', err);
+    setSyncStatus('disconnected');
+    ignoreNextRemoteUpdate = false;
+  });
+}
+
+// Override saveState to also push to Firebase
+const _origSaveState = saveState;
+saveState = function() {
+  saveStateLocal();
+  pushToRemote();
+};
+
+document.getElementById('sync-btn').addEventListener('click', () => {
+  const config = getSyncConfig();
+  const textarea = document.getElementById('sync-config-paste');
+  const connectedEl = document.getElementById('sync-status-connected');
+  const guideEl = document.getElementById('sync-setup-guide');
+  const disconnectBtn = document.getElementById('sync-disconnect-btn');
+
+  if (config && syncReady) {
+    textarea.value = JSON.stringify(config, null, 2);
+    connectedEl.style.display = 'flex';
+    guideEl.style.display = 'none';
+    disconnectBtn.style.display = '';
+  } else if (config) {
+    textarea.value = JSON.stringify(config, null, 2);
+    connectedEl.style.display = 'none';
+    guideEl.style.display = '';
+    disconnectBtn.style.display = '';
+  } else {
+    textarea.value = '';
+    connectedEl.style.display = 'none';
+    guideEl.style.display = '';
+    disconnectBtn.style.display = 'none';
+  }
+  openModal('sync-modal');
+});
+
+function connectSync() {
+  const textarea = document.getElementById('sync-config-paste');
+  const config = parseFirebaseConfig(textarea.value);
+  if (!config) {
+    alert('Invalid Firebase config. Make sure it includes at least a databaseURL.');
+    return;
+  }
+  saveSyncConfig(config);
+  closeModal('sync-modal');
+  initSync(config);
+}
+
+function disconnectSync() {
+  if (syncListener && firebaseDb) {
+    firebaseDb.ref('expenses-data').off('value', syncListener);
+    syncListener = null;
+  }
+  if (firebaseApp) {
+    try { firebaseApp.delete(); } catch {}
+    firebaseApp = null;
+    firebaseDb = null;
+  }
+  syncReady = false;
+  clearSyncConfig();
+  document.getElementById('sync-indicator').style.display = 'none';
+  closeModal('sync-modal');
+}
+
 /* ─── INIT ─── */
 initTheme();
 loadState();
 render();
+
+// Auto-connect sync if config exists
+const savedSyncConfig = getSyncConfig();
+if (savedSyncConfig) { initSync(savedSyncConfig); }
 </script>
