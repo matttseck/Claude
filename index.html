@@ -579,6 +579,22 @@ body {
   display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
 }
 
+/* ─── FINAL HKD AMOUNT ─── */
+.final-hkd {
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+.settlement-banner.overview-total { margin-bottom: 12px; }
+.settlement-banner.overview-total .final-hkd { margin-top: 0; padding-top: 0; border-top: none; }
+.final-amount { font-size: 1.15rem; }
+.final-note { font-size: .72rem; color: var(--text-tertiary); margin-top: 8px; line-height: 1.4; }
+.settlement-line.final-line { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light); }
+.expense-hkd { font-size: .7rem; color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.expense-hkd.est { color: var(--text-tertiary); font-style: italic; }
+.expense-amount-col { text-align: right; }
+.ief-hkd { flex: 0 0 90px; }
+.ief-hkd input { text-align: right; font-variant-numeric: tabular-nums; }
+
 /* ─── SYNC STATUS ─── */
 .sync-indicator {
   display: flex; align-items: center; gap: 5px;
@@ -707,6 +723,10 @@ input[type="file"] { display: none; }
           <input type="number" class="form-input amount-input" id="exp-amount" placeholder="0.00" step="0.01" min="0" inputmode="decimal">
           <select class="form-select" id="exp-currency" style="align-self:end"></select>
         </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">HKD charged on card statement (optional)</label>
+        <input type="number" class="form-input" id="exp-hkd" placeholder="Used as the settlement amount" step="0.01" min="0" inputmode="decimal">
       </div>
       <div class="form-group">
         <label class="form-label">Description</label>
@@ -970,6 +990,85 @@ function calculateSettlement(sessionId) {
   return result;
 }
 
+/* ─── HKD SETTLEMENT ─── */
+// Average HKD per unit of each foreign currency, taken from expenses that carry the
+// HKD amount actually charged on a card statement (e.hkd).
+function getAvgRates() {
+  const sums = {};
+  state.expenses.forEach(e => {
+    if (e.currency === 'HKD' || !(e.hkd > 0) || !(e.amount > 0)) return;
+    const s = sums[e.currency] || (sums[e.currency] = { hkd: 0, foreign: 0 });
+    s.hkd += e.hkd;
+    s.foreign += e.amount;
+  });
+  const rates = { HKD: 1 };
+  Object.entries(sums).forEach(([cur, s]) => { rates[cur] = s.hkd / s.foreign; });
+  return rates;
+}
+
+// HKD value of one expense: native HKD, the statement amount if known, else the average rate
+function expenseHkd(e, rates) {
+  if (e.currency === 'HKD') return { value: e.amount, source: 'native' };
+  if (e.hkd > 0) return { value: e.hkd, source: 'statement' };
+  if (rates[e.currency]) return { value: e.amount * rates[e.currency], source: 'estimate' };
+  return null;
+}
+
+// Net HKD position for a session (positive = Vienna owes Matt)
+function calculateSettlementHKD(sessionId) {
+  const rates = getAvgRates();
+  let balance = 0, estimatedPart = 0, missing = 0;
+  state.expenses.filter(e => e.sessionId === sessionId).forEach(e => {
+    const h = expenseHkd(e, rates);
+    if (!h) { missing++; return; }
+    let mattShare;
+    if (e.forWhom === 'matt') mattShare = h.value;
+    else if (e.forWhom === 'vienna') mattShare = 0;
+    else mattShare = h.value * ((e.splitRatio != null ? e.splitRatio : 50) / 100);
+    const contribution = (e.paidBy === 'matt' ? h.value : 0) - mattShare;
+    balance += contribution;
+    if (h.source === 'estimate') estimatedPart += contribution;
+  });
+  return { balance, rates, estimatedPart, missing };
+}
+
+function renderFinalHkd(fin) {
+  const amt = Math.abs(fin.balance);
+  let main;
+  if (amt < 0.005) {
+    main = '<div class="settlement-all-clear">Nothing to pay in HKD</div>';
+  } else {
+    const from = fin.balance > 0 ? 'vienna' : 'matt';
+    const to = fin.balance > 0 ? 'matt' : 'vienna';
+    main = `<div class="settlement-item">
+      <span class="person-badge ${from}">${from === 'matt' ? 'Matt' : 'Vienna'}</span>
+      <span class="arrow-icon">&rarr;</span>
+      <span class="person-badge ${to}">${to === 'matt' ? 'Matt' : 'Vienna'}</span>
+      <span class="settlement-amount final-amount">${fmtCurrency(amt, 'HKD')}</span>
+    </div>`;
+  }
+  const rateParts = Object.entries(fin.rates).filter(([c]) => c !== 'HKD')
+    .map(([c, r]) => `1 ${c} = HK$${r.toFixed(c === 'KRW' || c === 'JPY' || c === 'VND' ? 5 : 4)}`);
+  let note = 'Uses the HKD charged on card statements where known';
+  if (rateParts.length) note += `, otherwise the average rate (${rateParts.join(', ')})`;
+  if (Math.abs(fin.estimatedPart) >= 0.005) note += `. Estimated part: ${fmtCurrency(Math.abs(fin.estimatedPart), 'HKD')}`;
+  if (fin.missing) note += `. ${fin.missing} expense${fin.missing > 1 ? 's have' : ' has'} no rate yet and ${fin.missing > 1 ? 'are' : 'is'} left out`;
+  return `<div class="final-hkd">
+    <div class="settlement-title">Final amount to pay (HKD)</div>
+    ${main}
+    <div class="final-note">${note}.</div>
+  </div>`;
+}
+
+function hkdRefHtml(e, rates) {
+  if (e.currency === 'HKD') return '';
+  const h = expenseHkd(e, rates);
+  if (!h) return '';
+  return h.source === 'statement'
+    ? `<span class="expense-hkd">${fmtCurrency(h.value, 'HKD')}</span>`
+    : `<span class="expense-hkd est" title="Estimated at average rate">&asymp; ${fmtCurrency(h.value, 'HKD')}</span>`;
+}
+
 function populateCurrencySelect(selectEl, defaultVal) {
   selectEl.innerHTML = CURRENCIES.map(c =>
     `<option value="${c.code}" ${c.code === defaultVal ? 'selected' : ''}>${c.code} - ${escapeHtml(c.name)}</option>`
@@ -1063,7 +1162,22 @@ function renderOverview() {
     return;
   }
 
-  let html = '<div class="overview-grid">';
+  let html = '';
+  const openSessions = state.sessions.filter(s => !s.settled);
+  if (openSessions.length > 0 && state.expenses.length > 0) {
+    const total = { balance: 0, rates: getAvgRates(), estimatedPart: 0, missing: 0 };
+    openSessions.forEach(s => {
+      const f = calculateSettlementHKD(s.id);
+      total.balance += f.balance;
+      total.estimatedPart += f.estimatedPart;
+      total.missing += f.missing;
+    });
+    html += `<div class="settlement-banner overview-total">
+      <div class="settlement-title">All open sessions</div>
+      ${renderFinalHkd(total).replace('<div class="settlement-title">Final amount to pay (HKD)</div>', '')}
+    </div>`;
+  }
+  html += '<div class="overview-grid">';
   state.sessions.forEach(s => {
     const settlement = calculateSettlement(s.id);
     const expCount = state.expenses.filter(e => e.sessionId === s.id).length;
@@ -1096,6 +1210,17 @@ function renderOverview() {
           <span class="amount">${fmtCurrency(Math.abs(v.balance), cur)}</span>
         </div>`;
       });
+    }
+    if (!settled && expCount > 0) {
+      const f = calculateSettlementHKD(s.id);
+      if (Math.abs(f.balance) >= 0.005) {
+        const owes = f.balance > 0 ? 'Vienna' : 'Matt';
+        const owed = f.balance > 0 ? 'Matt' : 'Vienna';
+        html += `<div class="settlement-line final-line">
+          <span><strong>Net</strong> ${owes}</span><span class="arrow">&rarr;</span><span>${owed}</span>
+          <span class="amount">${fmtCurrency(Math.abs(f.balance), 'HKD')}</span>
+        </div>`;
+      }
     }
     html += '</div></div>';
   });
@@ -1168,6 +1293,10 @@ function renderSessionDetail(sessionId) {
   html += '</div>';
 
   if (Object.keys(settlement).length > 0) {
+    html += renderFinalHkd(calculateSettlementHKD(sessionId));
+  }
+
+  if (Object.keys(settlement).length > 0) {
     let mattTotal = {}, viennaTotal = {};
     Object.entries(settlement).forEach(([cur, v]) => {
       mattTotal[cur] = v.mattPaid;
@@ -1207,6 +1336,10 @@ function renderSessionDetail(sessionId) {
       <div class="ief-field ief-currency">
         <label>Currency</label>
         <select id="ief-currency">${curOpts}</select>
+      </div>
+      <div class="ief-field ief-hkd">
+        <label title="HKD charged on the card statement (optional)">HKD (card)</label>
+        <input type="number" id="ief-hkd" placeholder="optional" step="0.01" min="0" inputmode="decimal">
       </div>
       <div class="ief-field ief-category">
         <label>Category</label>
@@ -1264,6 +1397,7 @@ function renderSessionDetail(sessionId) {
   } else if (expenses.length === 0) {
     html += '<div class="empty-state"><p>No expenses match the current filter.</p></div>';
   } else {
+    const rates = getAvgRates();
     html += '<div class="expense-list">';
     expenses.forEach(e => {
       const cat = CATEGORIES[e.category] || CATEGORIES.other;
@@ -1287,6 +1421,7 @@ function renderSessionDetail(sessionId) {
         <div class="expense-amount-col">
           <span class="expense-amount">${fmtCurrency(e.amount, e.currency)}</span>
           <span class="expense-for">for ${forLabel}</span>
+          ${hkdRefHtml(e, rates)}
         </div>
         <button class="expense-delete" onclick="event.stopPropagation();quickDelete('${e.id}')" title="Delete">&times;</button>
       </div>`;
@@ -1314,9 +1449,13 @@ function addFromInlineForm() {
 
   iefDefaults = { currency, category, date, paidBy, forWhom, split: splitRatio };
 
+  const hkdRaw = parseFloat(document.getElementById('ief-hkd').value);
+  const hkd = currency !== 'HKD' && hkdRaw > 0 ? hkdRaw : null;
+
   state.expenses.push({
     id: uid(), sessionId: state.activeView,
     amount, currency, description: desc, date, paidBy, forWhom, splitRatio, category,
+    ...(hkd ? { hkd } : {}),
     createdAt: Date.now()
   });
 
@@ -1378,6 +1517,7 @@ function openExpenseModal(expenseId) {
     document.getElementById('exp-delete-btn').style.display = '';
     document.getElementById('exp-amount').value = exp.amount;
     document.getElementById('exp-currency').value = exp.currency;
+    document.getElementById('exp-hkd').value = exp.hkd || '';
     document.getElementById('exp-desc').value = exp.description || '';
     document.getElementById('exp-date').value = exp.date;
 
@@ -1399,6 +1539,7 @@ function openExpenseModal(expenseId) {
     document.getElementById('exp-save-btn').textContent = 'Add expense';
     document.getElementById('exp-delete-btn').style.display = 'none';
     document.getElementById('exp-amount').value = '';
+    document.getElementById('exp-hkd').value = '';
     document.getElementById('exp-desc').value = '';
     document.getElementById('exp-date').value = todayStr();
 
@@ -1434,6 +1575,8 @@ function saveExpense() {
   const paidBy = getToggleValue('exp-paidby');
   const forWhom = getToggleValue('exp-forwhom');
   const splitRatio = forWhom === 'both' ? parseInt(document.getElementById('exp-split').value) : 50;
+  const hkdRaw = parseFloat(document.getElementById('exp-hkd').value);
+  const hkd = currency !== 'HKD' && hkdRaw > 0 ? hkdRaw : null;
 
   const activeCategory = document.querySelector('#exp-category-grid .category-option.active');
   const category = activeCategory ? activeCategory.dataset.value : 'other';
@@ -1441,12 +1584,15 @@ function saveExpense() {
   if (editingExpenseId) {
     const idx = state.expenses.findIndex(e => e.id === editingExpenseId);
     if (idx >= 0) {
-      state.expenses[idx] = { ...state.expenses[idx], amount, currency, description, date, paidBy, forWhom, splitRatio, category };
+      const updated = { ...state.expenses[idx], amount, currency, description, date, paidBy, forWhom, splitRatio, category };
+      if (hkd) updated.hkd = hkd; else delete updated.hkd;
+      state.expenses[idx] = updated;
     }
   } else {
     state.expenses.push({
       id: uid(), sessionId: state.activeView,
       amount, currency, description, date, paidBy, forWhom, splitRatio, category,
+      ...(hkd ? { hkd } : {}),
       createdAt: Date.now()
     });
   }
@@ -1812,11 +1958,12 @@ function pushToRemote() {
   if (!syncReady || !firebaseDb) return;
   ignoreNextRemoteUpdate = true;
   setSyncStatus('syncing');
-  firebaseDb.ref('expenses-data').set({
+  // JSON round-trip drops undefined values, which Firebase rejects
+  firebaseDb.ref('expenses-data').set(JSON.parse(JSON.stringify({
     sessions: state.sessions,
     expenses: state.expenses,
     lastUpdated: Date.now()
-  }).then(() => {
+  }))).then(() => {
     setSyncStatus('connected');
   }).catch((err) => {
     console.error('Sync push failed:', err);
