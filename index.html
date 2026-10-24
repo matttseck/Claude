@@ -579,19 +579,62 @@ body {
   display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
 }
 
-/* ─── FINAL HKD AMOUNT ─── */
-.final-hkd {
-  margin-top: 16px; padding-top: 14px;
-  border-top: 1px solid var(--border-light);
+/* ─── SETTLE CARD (single HKD amount) ─── */
+.settle-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 22px 20px 16px; margin-bottom: 16px;
 }
-.settlement-banner.overview-total { margin-bottom: 12px; }
-.settlement-banner.overview-total .final-hkd { margin-top: 0; padding-top: 0; border-top: none; }
-.final-amount { font-size: 1.15rem; }
-.final-note { font-size: .72rem; color: var(--text-tertiary); margin-top: 8px; line-height: 1.4; }
-.settlement-line.final-line { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light); }
-.expense-hkd { font-size: .7rem; color: var(--text-secondary); white-space: nowrap; font-variant-numeric: tabular-nums; }
-.expense-hkd.est { color: var(--text-tertiary); font-style: italic; }
+.settle-card.settled { border-color: var(--success); background: #3a9e6e08; }
+.settle-label {
+  font-size: .72rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--text-tertiary); margin-bottom: 10px;
+}
+.settle-sentence { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: .95rem; color: var(--text-secondary); }
+.settle-sentence .person-badge {
+  font-size: .8rem; font-weight: 600; padding: 3px 12px; border-radius: 12px;
+}
+.settle-sentence .person-badge.matt { background: var(--matt-light); color: var(--matt); }
+.settle-sentence .person-badge.vienna { background: var(--vienna-light); color: var(--vienna); }
+.settle-amount {
+  font-size: 2.3rem; font-weight: 800; letter-spacing: -.02em; line-height: 1.15;
+  margin-top: 6px; font-variant-numeric: tabular-nums; color: var(--text);
+}
+.settle-none { font-size: 1.3rem; font-weight: 700; color: var(--text-secondary); }
+.settle-none.ok { color: var(--success); }
+.settle-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px;
+  margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--border-light);
+}
+.settle-cell .label { font-size: .74rem; color: var(--text-tertiary); }
+.settle-cell .value { font-size: 1rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.settle-cell .value.matt { color: var(--matt); }
+.settle-cell .value.vienna { color: var(--vienna); }
+.settle-eq { grid-column: 1 / -1; font-size: .78rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.settle-details { margin-top: 14px; border-top: 1px solid var(--border-light); padding-top: 10px; }
+.settle-details summary {
+  cursor: pointer; font-size: .78rem; font-weight: 600; color: var(--text-secondary);
+  list-style: none;
+}
+.settle-details summary::-webkit-details-marker { display: none; }
+.settle-details summary::before { content: '\25B8  '; }
+.settle-details[open] summary::before { content: '\25BE  '; }
+.by-row {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px;
+  font-size: .8rem; padding: 6px 0; border-bottom: 1px solid var(--border-light);
+  font-variant-numeric: tabular-nums;
+}
+.by-row > span:first-child { white-space: nowrap; }
+.by-row .by-native { color: var(--text-tertiary); white-space: nowrap; }
+.by-row .by-hkd { font-weight: 600; text-align: right; }
+.by-row .by-est { font-weight: 400; color: var(--text-tertiary); font-style: italic; }
+.settle-note { font-size: .72rem; color: var(--text-tertiary); margin-top: 8px; line-height: 1.5; }
+.settle-card.overview-total { margin-bottom: 12px; }
+.card-pay { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: .84rem; color: var(--text-secondary); }
+.card-pay-amount { font-size: 1.15rem; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.card-empty { font-size: .82rem; color: var(--text-tertiary); }
 .expense-amount-col { text-align: right; }
+.expense-amount.est { font-style: italic; color: var(--text-secondary); }
+.expense-foreign { font-size: .74rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ief-hkd { flex: 0 0 90px; }
 .ief-hkd input { text-align: right; font-variant-numeric: tabular-nums; }
 
@@ -997,12 +1040,12 @@ function getAvgRates() {
   const sums = {};
   state.expenses.forEach(e => {
     if (e.currency === 'HKD' || !(e.hkd > 0) || !(e.amount > 0)) return;
-    const s = sums[e.currency] || (sums[e.currency] = { hkd: 0, foreign: 0 });
-    s.hkd += e.hkd;
-    s.foreign += e.amount;
+    const t = sums[e.currency] || (sums[e.currency] = { hkd: 0, foreign: 0 });
+    t.hkd += e.hkd;
+    t.foreign += e.amount;
   });
   const rates = { HKD: 1 };
-  Object.entries(sums).forEach(([cur, s]) => { rates[cur] = s.hkd / s.foreign; });
+  Object.entries(sums).forEach(([cur, t]) => { rates[cur] = t.hkd / t.foreign; });
   return rates;
 }
 
@@ -1014,59 +1057,89 @@ function expenseHkd(e, rates) {
   return null;
 }
 
-// Net HKD position for a session (positive = Vienna owes Matt)
-function calculateSettlementHKD(sessionId) {
+// Everything in HKD for one or more sessions. balance > 0 means Vienna owes Matt.
+function calculateSettlementHKD(sessionIds) {
+  const ids = Array.isArray(sessionIds) ? sessionIds : [sessionIds];
   const rates = getAvgRates();
-  let balance = 0, estimatedPart = 0, missing = 0;
-  state.expenses.filter(e => e.sessionId === sessionId).forEach(e => {
+  const r = { rates, mattPaid: 0, viennaPaid: 0, mattShare: 0, viennaShare: 0, estimatedPart: 0, missing: 0, byCurrency: {} };
+  state.expenses.filter(e => ids.includes(e.sessionId)).forEach(e => {
     const h = expenseHkd(e, rates);
-    if (!h) { missing++; return; }
-    let mattShare;
-    if (e.forWhom === 'matt') mattShare = h.value;
-    else if (e.forWhom === 'vienna') mattShare = 0;
-    else mattShare = h.value * ((e.splitRatio != null ? e.splitRatio : 50) / 100);
+    if (!h) { r.missing++; return; }
+    const pct = e.forWhom === 'matt' ? 100 : e.forWhom === 'vienna' ? 0 : (e.splitRatio != null ? e.splitRatio : 50);
+    const mattShare = h.value * pct / 100;
+    if (e.paidBy === 'matt') r.mattPaid += h.value; else r.viennaPaid += h.value;
+    r.mattShare += mattShare;
+    r.viennaShare += h.value - mattShare;
     const contribution = (e.paidBy === 'matt' ? h.value : 0) - mattShare;
-    balance += contribution;
-    if (h.source === 'estimate') estimatedPart += contribution;
+    if (h.source === 'estimate') r.estimatedPart += contribution;
+    const c = r.byCurrency[e.currency] || (r.byCurrency[e.currency] = { hkd: 0, native: 0, estimated: 0 });
+    c.hkd += contribution;
+    c.native += (e.paidBy === 'matt' ? e.amount : 0) - e.amount * pct / 100;
+    if (h.source === 'estimate') c.estimated += contribution;
   });
-  return { balance, rates, estimatedPart, missing };
+  r.balance = r.mattPaid - r.mattShare;
+  return r;
 }
 
-function renderFinalHkd(fin) {
+function renderSettleCard(fin, opts) {
+  opts = opts || {};
+  const name = p => (p === 'matt' ? 'Matt' : 'Vienna');
   const amt = Math.abs(fin.balance);
-  let main;
-  if (amt < 0.005) {
-    main = '<div class="settlement-all-clear">Nothing to pay in HKD</div>';
+  const from = fin.balance > 0 ? 'vienna' : 'matt';
+  const to = fin.balance > 0 ? 'matt' : 'vienna';
+
+  let hero;
+  if (opts.empty) {
+    hero = '<div class="settle-none">No expenses yet</div>';
+  } else if (amt < 0.005) {
+    hero = '<div class="settle-none ok">Nothing to pay</div>';
   } else {
-    const from = fin.balance > 0 ? 'vienna' : 'matt';
-    const to = fin.balance > 0 ? 'matt' : 'vienna';
-    main = `<div class="settlement-item">
-      <span class="person-badge ${from}">${from === 'matt' ? 'Matt' : 'Vienna'}</span>
-      <span class="arrow-icon">&rarr;</span>
-      <span class="person-badge ${to}">${to === 'matt' ? 'Matt' : 'Vienna'}</span>
-      <span class="settlement-amount final-amount">${fmtCurrency(amt, 'HKD')}</span>
-    </div>`;
+    hero = `<div class="settle-sentence"><span class="person-badge ${from}">${name(from)}</span> pays
+        <span class="person-badge ${to}">${name(to)}</span></div>
+      <div class="settle-amount">${fmtCurrency(amt, 'HKD')}</div>`;
   }
-  const rateParts = Object.entries(fin.rates).filter(([c]) => c !== 'HKD')
-    .map(([c, r]) => `1 ${c} = HK$${r.toFixed(c === 'KRW' || c === 'JPY' || c === 'VND' ? 5 : 4)}`);
-  let note = 'Uses the HKD charged on card statements where known';
-  if (rateParts.length) note += `, otherwise the average rate (${rateParts.join(', ')})`;
-  if (Math.abs(fin.estimatedPart) >= 0.005) note += `. Estimated part: ${fmtCurrency(Math.abs(fin.estimatedPart), 'HKD')}`;
-  if (fin.missing) note += `. ${fin.missing} expense${fin.missing > 1 ? 's have' : ' has'} no rate yet and ${fin.missing > 1 ? 'are' : 'is'} left out`;
-  return `<div class="final-hkd">
-    <div class="settlement-title">Final amount to pay (HKD)</div>
-    ${main}
-    <div class="final-note">${note}.</div>
+
+  let body = '';
+  if (!opts.empty) {
+    body += `<div class="settle-grid">
+      <div class="settle-cell"><div class="label">Matt paid</div><div class="value matt">${fmtCurrency(fin.mattPaid, 'HKD')}</div></div>
+      <div class="settle-cell"><div class="label">Vienna paid</div><div class="value vienna">${fmtCurrency(fin.viennaPaid, 'HKD')}</div></div>
+      <div class="settle-cell"><div class="label">Matt's share</div><div class="value matt">${fmtCurrency(fin.mattShare, 'HKD')}</div></div>
+      <div class="settle-cell"><div class="label">Vienna's share</div><div class="value vienna">${fmtCurrency(fin.viennaShare, 'HKD')}</div></div>
+    </div>`;
+
+    const rows = Object.entries(fin.byCurrency).filter(([, c]) => Math.abs(c.hkd) >= 0.005).map(([cur, c]) => {
+      const dir = c.hkd > 0 ? 'Vienna &rarr; Matt' : 'Matt &rarr; Vienna';
+      const native = cur === 'HKD' ? '<span></span>' : `<span class="by-native">${fmtCurrency(Math.abs(c.native), cur)}</span>`;
+      const est = Math.abs(c.estimated) >= 0.005 ? ` <span class="by-est">(${fmtCurrency(Math.abs(c.estimated), 'HKD')} estimated)</span>` : '';
+      return `<div class="by-row"><span>${dir}</span>${native}<span class="by-hkd">${fmtCurrency(Math.abs(c.hkd), 'HKD')}${est}</span></div>`;
+    }).join('');
+    const rateParts = Object.entries(fin.rates).filter(([c]) => c !== 'HKD')
+      .map(([c, r]) => `1 ${c} = HK$${r.toFixed(c === 'KRW' || c === 'JPY' || c === 'VND' ? 5 : 4)}`);
+    let note = 'Uses the HKD charged on your card statements where known. Anything else is converted at the average rate from those statements';
+    if (rateParts.length) note += ` (${rateParts.join(', ')})`;
+    note += '.';
+    if (fin.missing) note += ` ${fin.missing} expense${fin.missing > 1 ? 's have' : ' has'} no rate yet and ${fin.missing > 1 ? 'are' : 'is'} left out.`;
+    body += `<details class="settle-details"><summary>How this is worked out</summary>
+      ${rows}
+      <div class="settle-note">${note}</div>
+    </details>`;
+  }
+
+  return `<div class="settle-card ${opts.settled ? 'settled' : ''} ${opts.cls || ''}">
+    <div class="settle-label">${opts.label || 'To settle (HKD)'}${opts.settled ? ' · marked as settled' : ''}</div>
+    ${hero}${body}
   </div>`;
 }
 
-function hkdRefHtml(e, rates) {
-  if (e.currency === 'HKD') return '';
+function expenseAmountHtml(e, rates) {
+  const own = fmtCurrency(e.amount, e.currency);
+  if (e.currency === 'HKD') return `<span class="expense-amount">${own}</span>`;
   const h = expenseHkd(e, rates);
-  if (!h) return '';
-  return h.source === 'statement'
-    ? `<span class="expense-hkd">${fmtCurrency(h.value, 'HKD')}</span>`
-    : `<span class="expense-hkd est" title="Estimated at average rate">&asymp; ${fmtCurrency(h.value, 'HKD')}</span>`;
+  if (!h) return `<span class="expense-amount">${own}</span>`;
+  const est = h.source === 'estimate';
+  return `<span class="expense-amount ${est ? 'est' : ''}" ${est ? 'title="Estimated at the average rate"' : ''}>${est ? '&asymp; ' : ''}${fmtCurrency(h.value, 'HKD')}</span>
+    <span class="expense-foreign">${own}</span>`;
 }
 
 function populateCurrencySelect(selectEl, defaultVal) {
@@ -1165,62 +1238,31 @@ function renderOverview() {
   let html = '';
   const openSessions = state.sessions.filter(s => !s.settled);
   if (openSessions.length > 0 && state.expenses.length > 0) {
-    const total = { balance: 0, rates: getAvgRates(), estimatedPart: 0, missing: 0 };
-    openSessions.forEach(s => {
-      const f = calculateSettlementHKD(s.id);
-      total.balance += f.balance;
-      total.estimatedPart += f.estimatedPart;
-      total.missing += f.missing;
-    });
-    html += `<div class="settlement-banner overview-total">
-      <div class="settlement-title">All open sessions</div>
-      ${renderFinalHkd(total).replace('<div class="settlement-title">Final amount to pay (HKD)</div>', '')}
-    </div>`;
+    html += renderSettleCard(calculateSettlementHKD(openSessions.map(s => s.id)),
+      { label: 'All open sessions · to settle (HKD)', cls: 'overview-total' });
   }
   html += '<div class="overview-grid">';
   state.sessions.forEach(s => {
-    const settlement = calculateSettlement(s.id);
     const expCount = state.expenses.filter(e => e.sessionId === s.id).length;
-    const settled = s.settled || Object.values(settlement).every(v => Math.abs(v.balance) < 0.005);
+    const settled = !!s.settled;
+    const f = calculateSettlementHKD(s.id);
 
     html += `<div class="session-card ${settled ? 'settled' : ''}" onclick="switchView('${s.id}')">`;
     html += `<div class="session-card-name">${escapeHtml(s.name)}</div>`;
     if (s.note) html += `<div class="session-card-note">${escapeHtml(s.note)}</div>`;
-    html += `<div class="session-card-stats"><span><strong>${expCount}</strong> expense${expCount !== 1 ? 's' : ''}</span>`;
-
-    const totals = {};
-    Object.entries(settlement).forEach(([cur, v]) => {
-      if (!totals[cur]) totals[cur] = 0;
-      totals[cur] += v.total;
-    });
-    const totalParts = Object.entries(totals).map(([cur, amt]) => fmtCurrency(amt, cur));
-    if (totalParts.length > 0) html += `<span>Total: <strong>${totalParts.join(' + ')}</strong></span>`;
-    html += '</div>';
+    html += `<div class="session-card-stats"><span><strong>${expCount}</strong> expense${expCount !== 1 ? 's' : ''}</span></div>`;
 
     html += '<div class="session-card-settlement">';
-    if (settled && expCount > 0) {
-      html += `<span class="settled-badge">Settled</span>`;
-    } else if (Object.keys(settlement).length > 0) {
-      Object.entries(settlement).forEach(([cur, v]) => {
-        if (Math.abs(v.balance) < 0.005) return;
-        const owes = v.balance > 0 ? 'Vienna' : 'Matt';
-        const owed = v.balance > 0 ? 'Matt' : 'Vienna';
-        html += `<div class="settlement-line">
-          <span>${owes}</span><span class="arrow">&rarr;</span><span>${owed}</span>
-          <span class="amount">${fmtCurrency(Math.abs(v.balance), cur)}</span>
-        </div>`;
-      });
-    }
-    if (!settled && expCount > 0) {
-      const f = calculateSettlementHKD(s.id);
-      if (Math.abs(f.balance) >= 0.005) {
-        const owes = f.balance > 0 ? 'Vienna' : 'Matt';
-        const owed = f.balance > 0 ? 'Matt' : 'Vienna';
-        html += `<div class="settlement-line final-line">
-          <span><strong>Net</strong> ${owes}</span><span class="arrow">&rarr;</span><span>${owed}</span>
-          <span class="amount">${fmtCurrency(Math.abs(f.balance), 'HKD')}</span>
-        </div>`;
-      }
+    if (expCount === 0) {
+      html += '<span class="card-empty">No expenses yet</span>';
+    } else if (settled) {
+      html += '<span class="settled-badge">Settled</span>';
+    } else if (Math.abs(f.balance) < 0.005) {
+      html += '<span class="settled-badge">Nothing to pay</span>';
+    } else {
+      const owes = f.balance > 0 ? 'Vienna' : 'Matt';
+      const owed = f.balance > 0 ? 'Matt' : 'Vienna';
+      html += `<div class="card-pay"><span>${owes} pays ${owed}</span><span class="card-pay-amount">${fmtCurrency(Math.abs(f.balance), 'HKD')}</span></div>`;
     }
     html += '</div></div>';
   });
@@ -1236,7 +1278,6 @@ function renderSessionDetail(sessionId) {
   const session = state.sessions.find(s => s.id === sessionId);
   if (!session) { switchView('overview'); return; }
 
-  const settlement = calculateSettlement(sessionId);
   let expenses = state.expenses.filter(e => e.sessionId === sessionId);
 
   if (activeFilters.paidBy) expenses = expenses.filter(e => e.paidBy === activeFilters.paidBy);
@@ -1267,50 +1308,8 @@ function renderSessionDetail(sessionId) {
     </div>
   </div>`;
 
-  const allSettled = Object.values(settlement).every(v => Math.abs(v.balance) < 0.005) && Object.keys(settlement).length > 0;
-
-  html += `<div class="settlement-banner ${allSettled || session.settled ? 'all-settled' : ''}">`;
-  html += `<div class="settlement-title">Settlement</div>`;
-  html += '<div class="settlement-items">';
-
-  if (Object.keys(settlement).length === 0) {
-    html += '<div style="font-size:.88rem;color:var(--text-secondary)">No expenses yet</div>';
-  } else if (allSettled || session.settled) {
-    html += `<div class="settlement-all-clear">All settled</div>`;
-  } else {
-    Object.entries(settlement).forEach(([cur, v]) => {
-      if (Math.abs(v.balance) < 0.005) return;
-      const fromPerson = v.balance > 0 ? 'vienna' : 'matt';
-      const toPerson = v.balance > 0 ? 'matt' : 'vienna';
-      html += `<div class="settlement-item">
-        <span class="person-badge ${fromPerson}">${fromPerson === 'matt' ? 'Matt' : 'Vienna'}</span>
-        <span class="arrow-icon">&rarr;</span>
-        <span class="person-badge ${toPerson}">${toPerson === 'matt' ? 'Matt' : 'Vienna'}</span>
-        <span class="settlement-amount">${fmtCurrency(Math.abs(v.balance), cur)}</span>
-      </div>`;
-    });
-  }
-  html += '</div>';
-
-  if (Object.keys(settlement).length > 0) {
-    html += renderFinalHkd(calculateSettlementHKD(sessionId));
-  }
-
-  if (Object.keys(settlement).length > 0) {
-    let mattTotal = {}, viennaTotal = {};
-    Object.entries(settlement).forEach(([cur, v]) => {
-      mattTotal[cur] = v.mattPaid;
-      viennaTotal[cur] = v.viennaPaid;
-    });
-    const mattStr = Object.entries(mattTotal).filter(([,a]) => a > 0).map(([c,a]) => fmtCurrency(a,c)).join(' + ') || '0';
-    const viennaStr = Object.entries(viennaTotal).filter(([,a]) => a > 0).map(([c,a]) => fmtCurrency(a,c)).join(' + ') || '0';
-
-    html += `<div class="settlement-summary">
-      <div class="summary-block"><div class="label">Matt paid</div><div class="value matt">${mattStr}</div></div>
-      <div class="summary-block"><div class="label">Vienna paid</div><div class="value vienna">${viennaStr}</div></div>
-    </div>`;
-  }
-  html += '</div>';
+  html += renderSettleCard(calculateSettlementHKD(sessionId),
+    { empty: state.expenses.every(e => e.sessionId !== sessionId), settled: !!session.settled });
 
   // Inline expense form
   const iefCur = iefDefaults.currency || session.defaultCurrency;
@@ -1419,9 +1418,8 @@ function renderSessionDetail(sessionId) {
           </div>
         </div>
         <div class="expense-amount-col">
-          <span class="expense-amount">${fmtCurrency(e.amount, e.currency)}</span>
+          ${expenseAmountHtml(e, rates)}
           <span class="expense-for">for ${forLabel}</span>
-          ${hkdRefHtml(e, rates)}
         </div>
         <button class="expense-delete" onclick="event.stopPropagation();quickDelete('${e.id}')" title="Delete">&times;</button>
       </div>`;
