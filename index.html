@@ -815,22 +815,20 @@ input[type="file"] { display: none; }
         <strong>Set up free real-time sync between your devices:</strong>
         <ol>
           <li>Go to <a href="https://console.firebase.google.com" target="_blank" rel="noopener">Firebase Console</a> and create a new project (no Google Analytics needed)</li>
-          <li>In the project, go to <strong>Build &rarr; Realtime Database</strong> and click <strong>Create Database</strong></li>
-          <li>Choose any region, then start in <strong>test mode</strong></li>
-          <li>Go to <strong>Project Settings</strong> (gear icon) &rarr; <strong>General</strong> &rarr; scroll to <strong>Your apps</strong> &rarr; click the web icon <code>&lt;/&gt;</code></li>
-          <li>Register an app (any nickname), then copy the config values below</li>
+          <li>Go to <strong>Build &rarr; Realtime Database</strong> &rarr; <strong>Create Database</strong>, pick any region and start in <strong>test mode</strong></li>
+          <li>Open the <strong>Rules</strong> tab, replace everything with <code>{"rules":{"expenses-data":{".read":true,".write":true}}}</code> and click <strong>Publish</strong> (this stops test mode from expiring)</li>
+          <li>Open the <strong>Data</strong> tab and copy the URL at the top (it looks like <code>https://your-project-default-rtdb.firebaseio.com</code>)</li>
+          <li>Paste that URL below and click <strong>Connect</strong>. Then copy the share link that appears and open it on the other device.</li>
         </ol>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Firebase Config (paste the whole object or fill fields)</label>
-        <textarea class="form-input" id="sync-config-paste" placeholder='Paste your firebaseConfig object here, e.g.:
-{
-  apiKey: "AIza...",
-  authDomain: "my-project.firebaseapp.com",
-  databaseURL: "https://my-project-default-rtdb.firebaseio.com",
-  projectId: "my-project"
-}' style="font-family:var(--font-mono);font-size:.78rem;height:120px;resize:vertical"></textarea>
+        <label class="form-label">Database URL (or the whole firebaseConfig)</label>
+        <textarea class="form-input" id="sync-config-paste" placeholder="https://your-project-default-rtdb.firebaseio.com" style="font-family:var(--font-mono);font-size:.78rem;height:80px;resize:vertical"></textarea>
+      </div>
+      <div class="form-group" id="sync-share-group" style="display:none">
+        <label class="form-label">Share link for the other device</label>
+        <input type="text" class="form-input" id="sync-share-link" readonly onclick="this.select()" style="font-family:var(--font-mono);font-size:.74rem">
       </div>
 
       <div class="modal-footer" style="flex-wrap:wrap;gap:8px">
@@ -1688,26 +1686,15 @@ function clearSyncConfig() {
 }
 
 function parseFirebaseConfig(input) {
-  let text = input.trim();
-  // Handle JS object notation (unquoted keys)
-  text = text.replace(/(['"])?(\w+)(['"])?\s*:/g, '"$2":');
-  // Remove trailing commas
-  text = text.replace(/,\s*([}\]])/g, '$1');
-  // Ensure wrapped in braces
-  if (!text.startsWith('{')) text = '{' + text + '}';
-  try {
-    const obj = JSON.parse(text);
-    if (!obj.databaseURL && !obj.databaseUrl) return null;
-    return {
-      apiKey: obj.apiKey || '',
-      authDomain: obj.authDomain || '',
-      databaseURL: obj.databaseURL || obj.databaseUrl || '',
-      projectId: obj.projectId || '',
-      storageBucket: obj.storageBucket || '',
-      messagingSenderId: obj.messagingSenderId || '',
-      appId: obj.appId || ''
-    };
-  } catch { return null; }
+  const text = input.trim();
+  // A bare database URL is all the app needs
+  if (/^https:\/\/[^\s"']+$/.test(text)) return { databaseURL: text.replace(/\/+$/, '') };
+  // Otherwise pull key: "value" pairs out of the pasted firebaseConfig (quoted or unquoted keys)
+  const obj = {};
+  for (const m of text.matchAll(/(\w+)["']?\s*:\s*(["'])(.*?)\2/g)) obj[m[1]] = m[3];
+  if (!obj.databaseURL) return null;
+  obj.databaseURL = obj.databaseURL.replace(/\/+$/, '');
+  return obj;
 }
 
 function setSyncStatus(status) {
@@ -1746,8 +1733,9 @@ async function initSync(config) {
     setSyncStatus('syncing');
     await loadFirebaseSDK();
 
-    if (firebaseApp) {
-      try { firebaseApp.delete(); } catch {}
+    const existingApp = firebase.apps.find(a => a.name === 'mv-expenses');
+    if (existingApp) {
+      try { await existingApp.delete(); } catch {}
     }
 
     firebaseApp = firebase.initializeApp(config, 'mv-expenses');
@@ -1851,13 +1839,22 @@ document.getElementById('sync-btn').addEventListener('click', () => {
   const guideEl = document.getElementById('sync-setup-guide');
   const disconnectBtn = document.getElementById('sync-disconnect-btn');
 
+  const shareGroup = document.getElementById('sync-share-group');
+  if (config) {
+    document.getElementById('sync-share-link').value =
+      location.origin + location.pathname + '?sync=' + encodeURIComponent(config.databaseURL);
+    shareGroup.style.display = '';
+  } else {
+    shareGroup.style.display = 'none';
+  }
+
   if (config && syncReady) {
-    textarea.value = JSON.stringify(config, null, 2);
+    textarea.value = config.databaseURL;
     connectedEl.style.display = 'flex';
     guideEl.style.display = 'none';
     disconnectBtn.style.display = '';
   } else if (config) {
-    textarea.value = JSON.stringify(config, null, 2);
+    textarea.value = config.databaseURL;
     connectedEl.style.display = 'none';
     guideEl.style.display = '';
     disconnectBtn.style.display = '';
@@ -1874,11 +1871,14 @@ function connectSync() {
   const textarea = document.getElementById('sync-config-paste');
   const config = parseFirebaseConfig(textarea.value);
   if (!config) {
-    alert('Invalid Firebase config. Make sure it includes at least a databaseURL.');
+    alert('Could not find a database URL. Paste the URL shown at the top of the Realtime Database Data tab.');
     return;
   }
   saveSyncConfig(config);
-  closeModal('sync-modal');
+  document.getElementById('sync-share-link').value =
+    location.origin + location.pathname + '?sync=' + encodeURIComponent(config.databaseURL);
+  document.getElementById('sync-share-group').style.display = '';
+  document.getElementById('sync-disconnect-btn').style.display = '';
   initSync(config);
 }
 
@@ -1902,6 +1902,16 @@ function disconnectSync() {
 initTheme();
 loadState();
 render();
+
+// A shared link like ?sync=<database url> sets up sync on a new device
+try {
+  const link = new URLSearchParams(location.search).get('sync');
+  if (link) {
+    const cfg = parseFirebaseConfig(link);
+    if (cfg) saveSyncConfig(cfg);
+    history.replaceState(null, '', location.pathname);
+  }
+} catch {}
 
 // Auto-connect sync if config exists
 const savedSyncConfig = getSyncConfig();
